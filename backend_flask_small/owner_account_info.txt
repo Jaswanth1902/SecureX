@@ -1,0 +1,13 @@
+OWNER ACCOUNT CREDENTIALS
+============================================================
+
+Owner ID: 59b7f43d-297e-4c6f-a2c5-b16f45a2f11b
+Email: owner@test.com
+Password: owner123
+Name: Test Owner
+
+Access Token:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OWI3ZjQzZC0yOTdlLTRjNmYtYTJjNS1iMTZmNDVhMmYxMWIiLCJlbWFpbCI6Im93bmVyQHRlc3QuY29tIiwicm9sZSI6Im93bmVyIiwiaWF0IjoxNzY0NDgzNDMyLCJleHAiOjE3NjQ0ODQzMzJ9.h3c52AvMRMiQSiVKEP4Bbw4hUKl8ZZrpPuEkfG1J7Hc
+
+Refresh Token:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OWI3ZjQzZC0yOTdlLTRjNmYtYTJjNS1iMTZmNDVhMmYxMWIiLCJlbWFpbCI6Im93bmVyQHRlc3QuY29tIiwicm9sZSI6Im93bmVyIiwiaWF0IjoxNzY0NDgzNDMyLCJleHAiOjE3NjUwODgyMzJ9.EyMqj-tyu1KCDs30iSQeafutWYoIm-QgbGdPONTHiwg
