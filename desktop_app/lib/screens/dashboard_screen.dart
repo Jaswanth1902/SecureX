@@ -74,6 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final apiService = context.read<ApiService>();
       
       if (authService.accessToken == null) {
+        // ignore: avoid_print
         print('DEBUG: No access token found. Redirecting to login.');
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -81,11 +82,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
 
+      // ignore: avoid_print
       print('DEBUG: Fetching files with token: ${authService.accessToken!.substring(0, 10)}...');
       final files = await apiService.listFiles(authService.accessToken!);
+      // ignore: avoid_print
       print('DEBUG: API returned ${files.length} files.');
       
       for (var f in files) {
+        // ignore: avoid_print
         print('DEBUG: File found: ${f.fileName} (ID: ${f.fileId})');
       }
 
@@ -93,6 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _files = files;
       });
     } catch (e) {
+      // ignore: avoid_print
       print('DEBUG: Error fetching files: $e');
       setState(() {
         _errorMessage = e.toString();
@@ -121,6 +126,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _deleteFile(FileItem file) async {
+    // Read services before async gap
+    final authService = context.read<AuthService>();
+    final apiService = context.read<ApiService>();
+    
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -142,9 +151,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (confirm != true) return;
 
     try {
-      final authService = context.read<AuthService>();
-      final apiService = context.read<ApiService>();
-      
       await apiService.deleteFile(file.fileId, authService.accessToken!);
       
       if (!mounted) return;

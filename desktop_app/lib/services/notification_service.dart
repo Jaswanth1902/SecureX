@@ -45,16 +45,19 @@ class NotificationService {
           }
         },
         onError: (error) {
+          // ignore: avoid_print
           print('Stream error: $error');
           _disconnect();
         },
         onDone: () {
+          // ignore: avoid_print
           print('Stream closed');
           _disconnect();
         },
         cancelOnError: true,
       );
     } catch (e) {
+      // ignore: avoid_print
       print('Connection error: $e');
       _isConnected = false;
     }
@@ -81,9 +84,11 @@ class NotificationService {
           'data': jsonData,
         });
         if (kDebugMode) {
+          // ignore: avoid_print
           print('Received event: $event');
         }
       } catch (e) {
+        // ignore: avoid_print
         print('Error parsing event data: $e');
       }
     }

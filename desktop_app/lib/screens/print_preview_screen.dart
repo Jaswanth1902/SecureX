@@ -86,10 +86,15 @@ class _PrintPreviewScreenState extends State<PrintPreviewScreen> {
           _decryptedBytes = decrypted;
           _isLoading = false;
         });
+        // ignore: avoid_print
         print('==================================================');
+        // ignore: avoid_print
         print('MEMORY CHECK: File loaded into RAM');
+        // ignore: avoid_print
         print('Decrypted Size: ${_decryptedBytes!.length} bytes');
+        // ignore: avoid_print
         print('Source: In-Memory Buffer (Uint8List)');
+        // ignore: avoid_print
         print('==================================================');
       }
 
@@ -110,16 +115,21 @@ class _PrintPreviewScreenState extends State<PrintPreviewScreen> {
        await apiService.deleteFile(widget.fileId, authService.accessToken!);
        
        if (!mounted) return;
+       // ignore: use_build_context_synchronously
        ScaffoldMessenger.of(context).showSnackBar(
          const SnackBar(content: Text('File deleted from server for security.')),
        );
        
        // Go back after short delay
        Future.delayed(const Duration(seconds: 2), () {
-         if (mounted) Navigator.of(context).pop();
+         if (mounted) {
+           // ignore: use_build_context_synchronously
+           Navigator.of(context).pop();
+         }
        });
     } catch (e) {
       if (mounted) {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete file: $e')),
         );

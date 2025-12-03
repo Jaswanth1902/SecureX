@@ -45,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     try {
       // Check for key first
       final keyService = context.read<KeyService>();
+      final authService = context.read<AuthService>();
       final keyPair = await keyService.getStoredKeyPair();
       
       if (keyPair == null) {
@@ -56,7 +57,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         return;
       }
 
-      final authService = context.read<AuthService>();
       final success = await authService.login(
         _emailController.text,
         _passwordController.text,
@@ -87,13 +87,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     });
 
     try {
-      // 1. Generate Key Pair
+      // 1. Generate Key Pair and read services before async gap
       final keyService = context.read<KeyService>();
+      final authService = context.read<AuthService>();
       final keyPair = await keyService.generateAndStoreKeyPair();
       final publicKeyPem = await keyService.getPublicKeyPem(keyPair.publicKey);
 
       // 2. Register with API
-      final authService = context.read<AuthService>();
       final success = await authService.register(
         _emailController.text,
         _passwordController.text,

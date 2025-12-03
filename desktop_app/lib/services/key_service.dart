@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -86,13 +85,13 @@ class KeyService {
     
     final dataBase64 = base64Encode(topLevel.encode());
     
-    String pem = '-----BEGIN RSA PUBLIC KEY-----\n';
+    final buffer = StringBuffer('-----BEGIN RSA PUBLIC KEY-----\n');
     for (int i = 0; i < dataBase64.length; i += 64) {
-      pem += dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length) + '\n';
+      buffer.write('${dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length)}\n');
     }
-    pem += '-----END RSA PUBLIC KEY-----';
+    buffer.write('-----END RSA PUBLIC KEY-----');
     
-    return pem;
+    return buffer.toString();
   }
 
   Future<Uint8List> decryptSymmetricKey(String encryptedKeyBase64, pc.AsymmetricKeyPair keyPair) async {
