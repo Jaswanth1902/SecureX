@@ -47,7 +47,7 @@ def register_new_owner():
     
     payload = {
         "email": "surya@gmail.com",
-        "password": "satthi123",
+        "password": "sathi123",
         "full_name": "Sathi Surya",
         "public_key": public_pem
     }
