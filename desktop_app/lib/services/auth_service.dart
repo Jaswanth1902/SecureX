@@ -45,13 +45,17 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, String publicKey) async {
     try {
       final url = Uri.parse('$baseUrl/api/owners/login');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+        body: jsonEncode({
+          'email': email, 
+          'password': password,
+          'public_key': publicKey, // Sync public key on login
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -70,9 +74,60 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<bool> refreshProfile() async {
+    if (_accessToken == null) return false;
+    try {
+      final url = Uri.parse('$baseUrl/api/owners/profile');
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $_accessToken'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final updatedOwner = data['owner'];
+          _user = {...?_user, ...updatedOwner};
+          notifyListeners();
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Refresh Profile error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateName(String newName) async {
+    if (_accessToken == null) return false;
+    try {
+      final url = Uri.parse('$baseUrl/api/owners/update-profile');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: jsonEncode({'full_name': newName}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          await refreshProfile(); 
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Update Name error: $e');
+      return false;
+    }
+  }
+
   void logout() {
     _accessToken = null;
-
     _user = null;
     notifyListeners();
   }

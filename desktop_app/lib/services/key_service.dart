@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+// 'Uint8List' is available via `package:flutter/foundation.dart` so the
+// explicit `dart:typed_data` import is not required here.
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart' as pc;
 import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
 import 'package:pointycastle/asn1/primitives/asn1_integer.dart';
+import 'package:encrypt/encrypt.dart' as enc;
 
 class KeyService {
   static const String _privateKeyFileName = 'owner_private_key.json';
@@ -85,29 +88,51 @@ class KeyService {
     
     final dataBase64 = base64Encode(topLevel.encode());
     
-    final buffer = StringBuffer('-----BEGIN RSA PUBLIC KEY-----\n');
+    final sb = StringBuffer();
+    sb.writeln('-----BEGIN RSA PUBLIC KEY-----');
     for (int i = 0; i < dataBase64.length; i += 64) {
-      buffer.write('${dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length)}\n');
+      sb.writeln(dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length));
     }
-    buffer.write('-----END RSA PUBLIC KEY-----');
-    
-    return buffer.toString();
+    sb.write('-----END RSA PUBLIC KEY-----');
+
+    return sb.toString();
   }
+
+
 
   Future<Uint8List> decryptSymmetricKey(String encryptedKeyBase64, pc.AsymmetricKeyPair keyPair) async {
     final privKey = keyPair.privateKey as pc.RSAPrivateKey;
+    final pubKey = keyPair.publicKey as pc.RSAPublicKey;
     
-    // Use 'encrypt' package for easy RSA decryption
-    // Note: 'encrypt' package expects its own RSA key types or parsing.
-    // We can construct them or use pointycastle directly.
-    // Let's use pointycastle directly for OAEP since 'encrypt' might default to PKCS1v1.5
+    // Aggressively sanitize Base64 string (remove anything that isn't A-Z, a-z, 0-9, +, /, or =)
+    String sanitizedBase64 = encryptedKeyBase64.replaceAll(RegExp(r'[^a-zA-Z0-9+/=]'), '');
     
-    final cipher = pc.OAEPEncoding(pc.RSAEngine());
-    cipher.init(false, pc.PrivateKeyParameter<pc.RSAPrivateKey>(privKey)); // false = decrypt
-    
-    final encryptedBytes = base64Decode(encryptedKeyBase64);
-    final decrypted = cipher.process(Uint8List.fromList(encryptedBytes));
-    
-    return decrypted;
+    // Normalize (fix padding)
+    try {
+      sanitizedBase64 = base64.normalize(sanitizedBase64);
+    } catch (e) {
+      debugPrint('Warning: base64.normalize failed: $e');
+    }
+
+    debugPrint('DEBUG: Full Key for Inspection (Sanitized):');
+    debugPrint(sanitizedBase64);
+
+    try {
+      // Use 'encrypt' package which supports SHA-256 OAEP easily
+      final encrypter = enc.Encrypter(enc.RSA(
+        publicKey: pubKey,
+        privateKey: privKey,
+        encoding: enc.RSAEncoding.OAEP,
+        digest: enc.RSADigest.SHA256,
+      ));
+
+      final encrypted = enc.Encrypted.fromBase64(sanitizedBase64);
+      final decrypted = encrypter.decryptBytes(encrypted);
+      
+      return Uint8List.fromList(decrypted);
+    } catch (e) {
+      debugPrint('CRITICAL ERROR in decryptSymmetricKey: $e');
+      rethrow;
+    }
   }
 }

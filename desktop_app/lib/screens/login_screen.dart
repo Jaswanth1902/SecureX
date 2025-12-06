@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/key_service.dart';
+import '../widgets/google_logo_painter.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,204 +12,480 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _LoginScreenState extends State<LoginScreen> {
+  late PageController _pageController;
   
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
+  // LOGIN FORM CONTROLLERS
+  final _loginEmailController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
+
+  // REGISTER FORM CONTROLLERS
+  final _registerNameController = TextEditingController();
+  final _registerEmailController = TextEditingController();
+  final _registerPasswordController = TextEditingController();
+  final _registerConfirmPasswordController = TextEditingController();
   
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Form Validity State
+  bool _isLoginValid = false;
+  bool _isRegisterValid = false;
+  
+  // Specific Error States
+  bool _passwordsMismatch = false;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _pageController = PageController(initialPage: 0);
+    
+    // Add Listeners
+    _loginEmailController.addListener(_validateLogin);
+    _loginPasswordController.addListener(_validateLogin);
+    
+    _registerNameController.addListener(_validateRegister);
+    _registerEmailController.addListener(_validateRegister);
+    _registerPasswordController.addListener(_validateRegister);
+    _registerConfirmPasswordController.addListener(_validateRegister);
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
+    _pageController.dispose();
+    _loginEmailController.dispose();
+    _loginPasswordController.dispose();
+    _registerNameController.dispose();
+    _registerEmailController.dispose();
+    _registerPasswordController.dispose();
+    _registerConfirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  void _validateLogin() {
+    final isValid = _loginEmailController.text.isNotEmpty && _loginPasswordController.text.isNotEmpty;
+    if (_isLoginValid != isValid) {
+      setState(() => _isLoginValid = isValid);
+    }
+  }
 
+  void _validateRegister() {
+    final name = _registerNameController.text;
+    final email = _registerEmailController.text;
+    final pass = _registerPasswordController.text;
+    final confirm = _registerConfirmPasswordController.text;
+
+    // Check mismatch (only if both are non-empty to avoid noise)
+    final mismatch = (pass.isNotEmpty && confirm.isNotEmpty && pass != confirm);
+    
+    // Check total validity
+    final isValid = name.isNotEmpty && email.isNotEmpty && pass.isNotEmpty && confirm.isNotEmpty && !mismatch;
+
+    if (_isRegisterValid != isValid || _passwordsMismatch != mismatch) {
+      setState(() {
+        _isRegisterValid = isValid;
+        _passwordsMismatch = mismatch;
+      });
+    }
+  }
+
+  // --- ACTIONS ---
+
+  void _handleToggle(bool toLogin) {
+    _errorMessage = null; // Clear errors on toggle
+    _pageController.animateToPage(
+      toLogin ? 0 : 1,
+      duration: const Duration(milliseconds: 1000), // Glide duration (1 sec)
+      curve: Curves.easeInOutQuart,
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_isLoginValid) return;
+    setState(() { _isLoading = true; _errorMessage = null; });
     try {
-      // Check for key first
       final keyService = context.read<KeyService>();
       final authService = context.read<AuthService>();
+
       final keyPair = await keyService.getStoredKeyPair();
+      if (keyPair == null) throw 'No private key found. Please register.';
       
-      if (keyPair == null) {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'No private key found on this device. Please register or import your key.';
-          _isLoading = false;
-        });
-        return;
-      }
-
+      final publicKeyPem = await keyService.getPublicKeyPem(keyPair.publicKey);
       final success = await authService.login(
-        _emailController.text,
-        _passwordController.text,
+        _loginEmailController.text,
+        _loginPasswordController.text,
+        publicKeyPem,
       );
-
-      if (!mounted) return;
-
+      
       if (success) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardScreen()));
       } else {
-        setState(() {
-          _errorMessage = 'Login failed. Please check your credentials.';
-        });
+         throw 'Login failed. Check credentials.';
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Error: $e');
+      if (mounted) setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleRegister() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+    if (!_isRegisterValid) return;
+    setState(() { _isLoading = true; _errorMessage = null; });
     try {
-      // 1. Generate Key Pair and read services before async gap
+      // Validate
+      if (_registerPasswordController.text != _registerConfirmPasswordController.text) {
+        throw 'Passwords do not match.';
+      }
+
       final keyService = context.read<KeyService>();
       final authService = context.read<AuthService>();
+
       final keyPair = await keyService.generateAndStoreKeyPair();
       final publicKeyPem = await keyService.getPublicKeyPem(keyPair.publicKey);
-
-      // 2. Register with API
+      
       final success = await authService.register(
-        _emailController.text,
-        _passwordController.text,
-        _nameController.text,
+        _registerEmailController.text,
+        _registerPasswordController.text,
+        _registerNameController.text,
         publicKeyPem,
       );
-
-      if (!mounted) return;
-
+      
       if (success) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardScreen()));
       } else {
-        setState(() {
-          _errorMessage = 'Registration failed. Email might be taken.';
-        });
+        throw 'Registration failed. Email might be taken.';
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Error: $e');
+      if (mounted) setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // --- BUILDERS ---
+
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
-      body: Center(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1E0A30), Color(0xFF3A1A5B)],
+          ),
+        ),
+        // Use PageView for the "Glide" effect
+        child: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(), // Disable swipe, only buttons
+          children: [
+            // PAGE 0: LOGIN LAYER (Image Left, Form Right)
+            _buildLayer(
+              isDesktop: isDesktop, 
+              isImageLeft: true, 
+              child: _buildFadeWrapper(0, _buildLoginForm()),
+            ),
+
+            // PAGE 1: REGISTER LAYER (Form Left, Image Right)
+            _buildLayer(
+              isDesktop: isDesktop, 
+              isImageLeft: false, 
+              child: _buildFadeWrapper(1, _buildRegisterForm()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFadeWrapper(int pageIndex, Widget child) {
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, child) {
+        double page = 0.0;
+        try {
+           if (_pageController.hasClients) {
+             page = _pageController.page ?? 0.0;
+           } else {
+              page = _pageController.initialPage.toDouble();
+           }
+        } catch (_) {}
+
+        double opacity = 1.0;
+        
+        // Accelerated Fade Logic
+        if (pageIndex == 0) {
+          // Login Page: 0 -> 1 (Fade OUT fast)
+          // Fades out completely by 0.5 (halfway slide)
+          // 0.0 -> 1.0; At 0.5 -> 0.0
+          opacity = (1.0 - (page * 1.5)).clamp(0.0, 1.0);
+        } else {
+          // Register Page: 0 -> 1 (Fade IN fast)
+          // Starts appearing from 0.0, but gets full opacity quickly
+          // Let's make it fade in throughout the slide but maybe start slightly delayed or just pure page?
+          // If user says "no fade", maybe they want it to look like it's dissolving?
+          // Let's try pure linear mapping but distinct.
+          // Actually, let's mirror login: Fade IN during last half? (0.5 -> 1.0)
+          // page 0.5 -> 0.0 opacity. 1.0 -> 1.0 opacity.
+          // opacity = ((page - 0.2) / 0.8).clamp(0.0, 1.0); // start fading in at 0.2
+          opacity = page.clamp(0.0, 1.0); 
+          // Reverting to simple clamp but ensure AnimatedBuilder triggers.
+          // It's possible AnimatedBuilder isn't triggering if 'page' doesn't notify?
+          // PageController DOES notify.
+        }
+
+        return Opacity(
+          opacity: opacity,
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
+
+  Widget _buildLayer({required bool isDesktop, required bool isImageLeft, required Widget child}) {
+    if (!isDesktop) return Center(child: child); // Mobile: Just content centered
+
+    return Row(
+      children: isImageLeft 
+        ? [
+            Expanded(flex: 1, child: _buildImage()),
+            Expanded(flex: 1, child: Center(child: child)),
+          ] 
+        : [
+            Expanded(flex: 1, child: Center(child: child)),
+            Expanded(flex: 1, child: _buildImage()),
+          ],
+    );
+  }
+
+  Widget _buildImage() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          'https://lh3.googleusercontent.com/aida-public/AB6AXuCiPDD1Og4EGbl9lpRVWWdA_c7aFAnINhRC1XtRwcZNBgRg_T1NgapiSDUnhr_EMF4sNQt6U0MboPB8sqUzZQ84xTWEBmUsXulFTkCNJ1UZ19rZwrVPB_HX36PR3_pwwc_sgok7osqxmkX_15xJcD2gTIBuBm0QIYp1hudgj_Fg-aQEey8Q-Brv4jaGfZo3ayTQO43TjLspwdedN3VcGQsoI-fwfRPtYOGbWqNFfaje3YPocMkKytNd7tzIMzjZ0-63U_O081qKIGY',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stack) => Container(color: const Color(0xFF2D1B4E), child: const Center(child: Icon(Icons.security, size: 80, color: Colors.white24))),
+        ),
+        Container(color: Colors.black.withOpacity(0.3)), // Overlay
+      ],
+    );
+  }
+
+  // --- FORMS ---
+
+  Widget _buildLoginForm() {
+    return _buildFormContainer(
+      isLogin: true,
+      isValid: _isLoginValid,
+      title: 'Welcome back',
+      subtitle: 'Login to manage your files in SafeCopy.',
+      formFields: [
+        _buildLabel('Email'),
+        _buildInput(_loginEmailController, 'Enter your email', false),
+        const SizedBox(height: 16),
+        _buildLabel('Password'),
+        _buildInput(_loginPasswordController, 'Enter your password', true),
+      ],
+      onSubmit: _handleLogin,
+    );
+  }
+
+  Widget _buildRegisterForm() {
+    return _buildFormContainer(
+      isLogin: false,
+      isValid: _isRegisterValid,
+      title: 'Create Account',
+      subtitle: 'Register to start securing your files.',
+      formFields: [
+        _buildLabel('Name'),
+        _buildInput(_registerNameController, 'Enter your name', false),
+        const SizedBox(height: 16),
+        
+        _buildLabel('Email-id'),
+        _buildInput(_registerEmailController, 'Enter your email-id', false),
+        const SizedBox(height: 16),
+        
+        _buildLabel('New Password', errorText: _passwordsMismatch ? "Password doesn't match." : null),
+        _buildInput(_registerPasswordController, 'Enter your password', true),
+        const SizedBox(height: 16),
+        
+        _buildLabel('Confirm password', errorText: _passwordsMismatch ? "Password doesn't match." : null),
+        _buildInput(_registerConfirmPasswordController, 'Confirm your password', true),
+      ],
+      onSubmit: _handleRegister,
+    );
+  }
+
+  Widget _buildFormContainer({
+    required bool isLogin,
+    required bool isValid,
+    required String title,
+    required String subtitle,
+    required List<Widget> formFields,
+    required VoidCallback onSubmit,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.security, size: 64, color: Colors.blue),
+              // Header
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, fontFamily: 'Inter')),
+              const SizedBox(height: 8),
+              Text(subtitle, style: TextStyle(color: Colors.grey.shade400, fontSize: 16)),
               const SizedBox(height: 32),
-              Text(
-                'SafeCopy Owner Client',
-                style: Theme.of(context).textTheme.headlineMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Login'),
-                  Tab(text: 'Register'),
-                ],
-              ),
+
+              // Toggle
+              _buildToggle(isLogin),
               const SizedBox(height: 24),
-              SizedBox(
-                height: 300, // Fixed height for form area
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // Login Form
-                    Column(
-                      children: [
-                        TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _passwordController,
-                          decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock)),
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          child: _isLoading ? const CircularProgressIndicator() : const Text('Login'),
-                        ),
-                      ],
-                    ),
-                    // Register Form
-                    Column(
-                      children: [
-                        TextField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person)),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _emailController,
-                          decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email)),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _passwordController,
-                          decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock)),
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleRegister,
-                          child: _isLoading ? const CircularProgressIndicator() : const Text('Register & Generate Keys'),
-                        ),
-                      ],
-                    ),
-                  ],
+
+              // Inputs
+              ...formFields,
+              const SizedBox(height: 24),
+
+              // Submit Button
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 48,
+                decoration: BoxDecoration(
+                   gradient: const LinearGradient(colors: [Color(0xFF6A0DAD), Color(0xFF9370DB)]),
+                   borderRadius: BorderRadius.circular(8),
+                   boxShadow: isValid ? [
+                     BoxShadow(
+                       color: const Color(0xFF8A2BE2).withOpacity(0.6),
+                       blurRadius: 15,
+                       spreadRadius: 2,
+                       offset: const Offset(0, 4),
+                     ),
+                     BoxShadow(
+                       color: const Color(0xFF9370DB).withOpacity(0.4),
+                       blurRadius: 8,
+                       spreadRadius: 1,
+                       offset: const Offset(0, 0),
+                     ),
+                   ] : [],
+                ),
+                child: ElevatedButton(
+                  onPressed: (_isLoading || !isValid) ? null : onSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    disabledBackgroundColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: _isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Opacity(
+                        opacity: isValid ? 1.0 : 0.7,
+                        child: Text(isLogin ? 'Login' : 'Register', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                      ),
                 ),
               ),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
+              
+              // Divider & Social
+              const SizedBox(height: 24),
+              Row(children: [
+                 Expanded(child: Divider(color: const Color(0xFF4A2F65))),
+                 Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text(isLogin ? 'or continue with' : 'or sign up with', style: TextStyle(color: Colors.grey.shade400, fontSize: 13))),
+                 Expanded(child: Divider(color: const Color(0xFF4A2F65))),
+              ]),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google Auth not connected'))),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF4A2F65)),
+                  backgroundColor: const Color(0xFF2C2335),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                   SizedBox(width: 20, height: 20, child: CustomPaint(painter: GoogleLogoPainter())),
+                   const SizedBox(width: 12),
+                   Text(isLogin ? 'Continue with Google' : 'Sign up with Google', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+
+              if (_errorMessage != null)
+                Padding(padding: const EdgeInsets.only(top: 16), child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFEF4444)), textAlign: TextAlign.center)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGETS ---
+
+  Widget _buildToggle(bool isLogin) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFF2C2335), borderRadius: BorderRadius.circular(8)),
+      child: Row(children: [
+        _buildToggleOption('Login', isLogin, () => _handleToggle(true)),
+        _buildToggleOption('Register', !isLogin, () => _handleToggle(false)),
+      ]),
+    );
+  }
+
+  Widget _buildToggleOption(String label, bool isSelected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF4A2C6D) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade400, fontWeight: FontWeight.w500, fontSize: 14)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text, {String? errorText}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 15)),
+          if (errorText != null)
+            Text(errorText, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput(TextEditingController controller, String hint, bool isPassword) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C2335),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF4A2F65)),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );

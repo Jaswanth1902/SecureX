@@ -1,0 +1,13 @@
+OWNER ACCOUNT CREDENTIALS - Sathi Surya
+============================================================
+
+Owner ID: 0564c764-d28f-44ae-8182-9c6672317d95
+Email: surya@gmail.com
+Password: sathi123
+Name: Sathi surya
+
+Access Token:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNTY0Yzc2NC1kMjhmLTQ0YWUtODE4Mi05YzY2NzIzMTdkOTUiLCJlbWFpbCI6InN1cnlhQGdtYWlsLmNvbSIsInJvbGUiOiJvd25lciIsImlhdCI6MTc2NDUxNDMyMSwiZXhwIjoxNzY0NTE1MjIxfQ.2vtahzVH8BlsmHaj9w257574tTS_GXUhyfvJtFvAqmM
+
+Refresh Token:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNTY0Yzc2NC1kMjhmLTQ0YWUtODE4Mi05YzY2NzIzMTdkOTUiLCJlbWFpbCI6InN1cnlhQGdtYWlsLmNvbSIsInJvbGUiOiJvd25lciIsImlhdCI6MTc2NDUxNDMyMSwiZXhwIjoxNzY1MTE5MTIxfQ.itmKhAQeqXf6CISQmo9bicMUosXWok45QxvJP2LYasA

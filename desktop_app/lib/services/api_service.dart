@@ -63,7 +63,113 @@ class ApiService {
       throw Exception('Delete file error: $e');
     }
   }
+
+  Future<bool> updateFileStatus(String fileId, String status, String accessToken, {String? rejectionReason}) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/status/update/$fileId');
+      final body = {
+        'status': status,
+        if (rejectionReason != null) 'rejection_reason': rejectionReason,
+      };
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('Failed to update status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Update status error: $e');
+    }
+  }
+
+  Future<List<HistoryItem>> getHistory(String accessToken) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/history');
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final history = (json['history'] as List)
+            .map((h) => HistoryItem.fromJson(h))
+            .toList();
+        return history;
+      } else {
+        throw Exception('Failed to get history: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Get history error: $e');
+    }
+  }
+
+  Future<bool> clearHistory(String accessToken) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/clear-history');
+      final response = await http.post(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('Failed to clear history: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Clear history error: $e');
+    }
+  }
 }
+
+class HistoryItem {
+  final String fileId;
+  final String fileName;
+  final int fileSizeBytes;
+  final String uploadedAt;
+  final String? deletedAt;
+  final String status;
+  final String statusUpdatedAt;
+  final String? rejectionReason;
+  final bool isPrinted;
+
+  HistoryItem({
+    required this.fileId,
+    required this.fileName,
+    required this.fileSizeBytes,
+    required this.uploadedAt,
+    this.deletedAt,
+    required this.status,
+    required this.statusUpdatedAt,
+    this.rejectionReason,
+    required this.isPrinted,
+  });
+
+  factory HistoryItem.fromJson(Map<String, dynamic> json) {
+    return HistoryItem(
+      fileId: json['file_id'],
+      fileName: json['file_name'],
+      fileSizeBytes: json['file_size_bytes'] ?? 0,
+      uploadedAt: json['uploaded_at'] ?? '',
+      deletedAt: json['deleted_at'],
+      status: json['status'] ?? 'UNKNOWN',
+      statusUpdatedAt: json['status_updated_at'] ?? '',
+      rejectionReason: json['rejection_reason'],
+      isPrinted: (json['is_printed'] == 1) || (json['is_printed'] == true),
+    );
+  }
+}
+
 
 class PrintFileResponse {
   final String fileId;
