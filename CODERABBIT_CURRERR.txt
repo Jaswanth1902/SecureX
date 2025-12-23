@@ -1,0 +1,983 @@
+For all AI Agents reading this
+Please note that the following log entries are from a code review process conducted by an AI tool called CodeRabbit. The logs detail the steps taken during the review of a codebase, including file evaluations, configuration checks, and specific comments on various code segments.
+Please fix all of these first before proceeding with any further tasks.
+
+
+
+[INFO] 2025-11-30T17:26:17.144Z [telemetry] PostHog telemetry initialized {
+  "enabled": true
+}
+[INFO] 2025-11-30T17:26:37.602Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:26:47.809Z [gitStateChangeListener] Files state changed
+[INFO] 2025-11-30T17:27:01.985Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:28:18.369Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:28:24.567Z [reviewCode] Full review: found 378 files
+[INFO] 2025-11-30T17:28:24.800Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coderabbit.yaml
+[WARN] 2025-11-30T17:28:24.801Z [getYamlConfig] File .coderabbit.yaml does not exist
+[INFO] 2025-11-30T17:28:24.801Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coderabbit.yml
+[WARN] 2025-11-30T17:28:24.802Z [getYamlConfig] File .coderabbit.yml does not exist
+[INFO] 2025-11-30T17:28:24.803Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coder.yaml
+[WARN] 2025-11-30T17:28:24.803Z [getYamlConfig] File .coder.yaml does not exist
+[INFO] 2025-11-30T17:28:27.391Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "setting_up",
+    "timestamp": 1764523705659
+  },
+  "reviewId": "e36dd802-96ea-4be2-b40d-54c44fe85052"
+}
+[INFO] 2025-11-30T17:28:28.307Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "summarizing",
+    "timestamp": 1764523706408
+  },
+  "reviewId": "e36dd802-96ea-4be2-b40d-54c44fe85052"
+}
+[INFO] 2025-11-30T17:28:41.461Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:28:47.254Z [subscribe] Review title {
+  "title": "Migrate backend from Node.js Express to Flask with SQLite"
+}
+[INFO] 2025-11-30T17:28:48.029Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "reviewing",
+    "timestamp": 1764523725593
+  },
+  "reviewId": "e36dd802-96ea-4be2-b40d-54c44fe85052"
+}
+[INFO] 2025-11-30T17:29:04.142Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 5,
+  "filePath": "backend_flask/test_owner_001_info.txt"
+}
+[INFO] 2025-11-30T17:29:06.123Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 1,
+  "filePath": "desktop_app/.dart_tool/version"
+}
+[INFO] 2025-11-30T17:29:10.338Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 16,
+  "filePath": "desktop_app/README.md"
+}
+[INFO] 2025-11-30T17:29:11.814Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 442,
+  "filePath": "desktop_app/.dart_tool/package_config.json"
+}
+[INFO] 2025-11-30T17:29:14.578Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 1,
+  "filePath": "desktop_app/.flutter-plugins-dependencies"
+}
+[INFO] 2025-11-30T17:29:18.574Z [subscribe] Review comment {
+  "startLine": 31,
+  "endLine": 39,
+  "filePath": ".gitignore"
+}
+[INFO] 2025-11-30T17:29:23.801Z [subscribe] Review comment {
+  "startLine": 40,
+  "endLine": 46,
+  "filePath": "desktop_app/windows/CMakeLists.txt"
+}
+[INFO] 2025-11-30T17:29:23.803Z [subscribe] Review comment {
+  "startLine": 134,
+  "endLine": 158,
+  "filePath": "UPLOAD_FLOW_CRITICAL_ISSUES.md"
+}
+[INFO] 2025-11-30T17:29:27.481Z [subscribe] Review comment {
+  "startLine": 23,
+  "endLine": 28,
+  "filePath": "desktop_app/lib/main.dart"
+}
+[INFO] 2025-11-30T17:29:29.940Z [subscribe] Review comment {
+  "startLine": 5,
+  "endLine": 5,
+  "filePath": "backend_flask/requirements.txt"
+}
+[INFO] 2025-11-30T17:29:30.596Z [subscribe] Review comment {
+  "startLine": 15,
+  "endLine": 25,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[INFO] 2025-11-30T17:29:33.935Z [subscribe] Review comment {
+  "startLine": 96,
+  "endLine": 96,
+  "filePath": "desktop_app/windows/runner/Runner.rc"
+}
+[INFO] 2025-11-30T17:29:34.023Z [subscribe] Review comment {
+  "startLine": 92,
+  "endLine": 92,
+  "filePath": "desktop_app/windows/runner/Runner.rc"
+}
+[INFO] 2025-11-30T17:29:35.778Z [subscribe] Review comment {
+  "startLine": 6,
+  "endLine": 6,
+  "filePath": "backend_flask/requirements.txt"
+}
+[INFO] 2025-11-30T17:29:36.641Z [subscribe] Review comment {
+  "startLine": 28,
+  "endLine": 37,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[INFO] 2025-11-30T17:29:38.236Z [subscribe] Review comment {
+  "startLine": 40,
+  "endLine": 59,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[INFO] 2025-11-30T17:29:39.653Z [subscribe] Review comment {
+  "startLine": 9,
+  "endLine": 9,
+  "filePath": "backend_flask/auth_utils.py"
+}
+[INFO] 2025-11-30T17:29:39.928Z [subscribe] Review comment {
+  "startLine": 55,
+  "endLine": 66,
+  "filePath": "desktop_app/lib/services/key_service.dart"
+}
+[INFO] 2025-11-30T17:29:39.931Z [subscribe] Review comment {
+  "startLine": 15,
+  "endLine": 25,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[INFO] 2025-11-30T17:29:47.454Z [subscribe] Review comment {
+  "startLine": 71,
+  "endLine": 77,
+  "filePath": "desktop_app/lib/services/key_service.dart"
+}
+[INFO] 2025-11-30T17:29:47.760Z [subscribe] Review comment {
+  "startLine": 71,
+  "endLine": 77,
+  "filePath": "backend_flask/test_sse_realtime.py"
+}
+[INFO] 2025-11-30T17:29:49.613Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 2,
+  "filePath": "backend_flask/verify_uploads.py"
+}
+[INFO] 2025-11-30T17:29:52.678Z [subscribe] Review comment {
+  "startLine": 27,
+  "endLine": 32,
+  "filePath": "desktop_app/windows/runner/main.cpp"
+}
+[INFO] 2025-11-30T17:29:53.595Z [subscribe] Review comment {
+  "startLine": 31,
+  "endLine": 39,
+  "filePath": "backend_flask/verify_backend.py"
+}
+[INFO] 2025-11-30T17:29:54.725Z [subscribe] Review comment {
+  "startLine": 29,
+  "endLine": 31,
+  "filePath": "backend_flask/verify_owner_upload.py"
+}
+[INFO] 2025-11-30T17:29:54.728Z [subscribe] Review comment {
+  "startLine": 25,
+  "endLine": 27,
+  "filePath": "desktop_app/lib/services/encryption_service.dart"
+}
+[INFO] 2025-11-30T17:29:55.441Z [subscribe] Review comment {
+  "startLine": 34,
+  "endLine": 34,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:29:55.750Z [subscribe] Review comment {
+  "startLine": 53,
+  "endLine": 59,
+  "filePath": "backend_flask/auth_utils.py"
+}
+[INFO] 2025-11-30T17:29:56.062Z [subscribe] Review comment {
+  "startLine": 73,
+  "endLine": 78,
+  "filePath": "desktop_app/lib/services/auth_service.dart"
+}
+[INFO] 2025-11-30T17:29:56.064Z [subscribe] Review comment {
+  "startLine": 35,
+  "endLine": 36,
+  "filePath": "desktop_app/lib/services/auth_service.dart"
+}
+[INFO] 2025-11-30T17:29:56.363Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 71,
+  "filePath": "desktop_app/lib/services/auth_service.dart"
+}
+[INFO] 2025-11-30T17:29:56.366Z [subscribe] Review comment {
+  "startLine": 63,
+  "endLine": 73,
+  "filePath": "backend_flask/verify_backend.py"
+}
+[INFO] 2025-11-30T17:29:56.642Z [subscribe] Review comment {
+  "startLine": 4,
+  "endLine": 4,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:29:56.801Z [subscribe] Review comment {
+  "startLine": 11,
+  "endLine": 19,
+  "filePath": "backend_flask/verify_backend.py"
+}
+[INFO] 2025-11-30T17:29:56.874Z [subscribe] Review comment {
+  "startLine": 9,
+  "endLine": 16,
+  "filePath": "desktop_app/windows/runner/resource.h"
+}
+[INFO] 2025-11-30T17:29:57.283Z [subscribe] Review comment {
+  "startLine": 38,
+  "endLine": 47,
+  "filePath": "backend_flask/test_sse_realtime.py"
+}
+[INFO] 2025-11-30T17:29:57.286Z [subscribe] Review comment {
+  "startLine": 20,
+  "endLine": 24,
+  "filePath": "backend_flask/create_test_owner_001.py"
+}
+[INFO] 2025-11-30T17:29:57.596Z [subscribe] Review comment {
+  "startLine": 20,
+  "endLine": 30,
+  "filePath": "desktop_app/lib/models/file_item.dart"
+}
+[INFO] 2025-11-30T17:29:58.510Z [subscribe] Review comment {
+  "startLine": 18,
+  "endLine": 44,
+  "filePath": "backend_flask/clear_owners.py"
+}
+[INFO] 2025-11-30T17:30:00.045Z [subscribe] Review comment {
+  "startLine": 15,
+  "endLine": 15,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:30:00.124Z [subscribe] Review comment {
+  "startLine": 11,
+  "endLine": 47,
+  "filePath": "backend_flask/check_db.py"
+}
+[INFO] 2025-11-30T17:30:01.184Z [subscribe] Review comment {
+  "startLine": 17,
+  "endLine": 36,
+  "filePath": "backend_flask/auth_utils.py"
+}
+[INFO] 2025-11-30T17:30:01.188Z [subscribe] Review comment {
+  "startLine": 43,
+  "endLine": 46,
+  "filePath": "backend_flask/verify_backend.py"
+}
+[INFO] 2025-11-30T17:30:01.581Z [subscribe] Review comment {
+  "startLine": 21,
+  "endLine": 26,
+  "filePath": "backend_flask/create_owner_account.py"
+}
+[INFO] 2025-11-30T17:30:02.527Z [subscribe] Review comment {
+  "startLine": 8,
+  "endLine": 9,
+  "filePath": "backend_flask/db.py"
+}
+[INFO] 2025-11-30T17:30:03.119Z [subscribe] Review comment {
+  "startLine": 11,
+  "endLine": 24,
+  "filePath": "backend_flask/db.py"
+}
+[INFO] 2025-11-30T17:30:03.428Z [subscribe] Review comment {
+  "startLine": 49,
+  "endLine": 79,
+  "filePath": "backend_flask/check_db.py"
+}
+[INFO] 2025-11-30T17:30:04.043Z [subscribe] Review comment {
+  "startLine": 16,
+  "endLine": 151,
+  "filePath": "backend_flask/test_file_transfer.py"
+}
+[INFO] 2025-11-30T17:30:04.352Z [subscribe] Review comment {
+  "startLine": 79,
+  "endLine": 94,
+  "filePath": "backend_flask/test_sse_realtime.py"
+}
+[INFO] 2025-11-30T17:30:04.909Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 7,
+  "filePath": "backend_flask/sse_manager.py"
+}
+[INFO] 2025-11-30T17:30:05.894Z [subscribe] Review comment {
+  "startLine": 72,
+  "endLine": 79,
+  "filePath": "backend_flask/quick_start.py"
+}
+[INFO] 2025-11-30T17:30:05.895Z [subscribe] Review comment {
+  "startLine": 32,
+  "endLine": 40,
+  "filePath": "desktop_app/lib/services/auth_service.dart"
+}
+[INFO] 2025-11-30T17:30:07.264Z [subscribe] Review comment {
+  "startLine": 67,
+  "endLine": 69,
+  "filePath": "desktop_app/windows/runner/win32_window.h"
+}
+[INFO] 2025-11-30T17:30:07.733Z [subscribe] Review comment {
+  "startLine": 31,
+  "endLine": 31,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:30:08.657Z [subscribe] Review comment {
+  "startLine": 21,
+  "endLine": 30,
+  "filePath": "desktop_app/lib/services/auth_service.dart"
+}
+[INFO] 2025-11-30T17:30:08.960Z [subscribe] Review comment {
+  "startLine": 25,
+  "endLine": 25,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:30:08.962Z [subscribe] Review comment {
+  "startLine": 16,
+  "endLine": 30,
+  "filePath": "backend_flask/quick_start.py"
+}
+[INFO] 2025-11-30T17:30:09.056Z [subscribe] Review comment {
+  "startLine": 15,
+  "endLine": 19,
+  "filePath": "desktop_app/windows/runner/win32_window.h"
+}
+[INFO] 2025-11-30T17:30:09.113Z [subscribe] Review comment {
+  "startLine": 14,
+  "endLine": 21,
+  "filePath": "backend_flask/sse_manager.py"
+}
+[INFO] 2025-11-30T17:30:09.347Z [subscribe] Review comment {
+  "startLine": 28,
+  "endLine": 29,
+  "filePath": "desktop_app/windows/runner/win32_window.h"
+}
+[INFO] 2025-11-30T17:30:10.197Z [subscribe] Review comment {
+  "startLine": 60,
+  "endLine": 65,
+  "filePath": "backend_flask/create_test_owner_001.py"
+}
+[INFO] 2025-11-30T17:30:11.016Z [subscribe] Review comment {
+  "startLine": 75,
+  "endLine": 78,
+  "filePath": "backend_flask/create_test_owner_001.py"
+}
+[INFO] 2025-11-30T17:30:11.738Z [subscribe] Review comment {
+  "startLine": 17,
+  "endLine": 32,
+  "filePath": "backend_flask/routes/events.py"
+}
+[INFO] 2025-11-30T17:30:11.740Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 64,
+  "filePath": "desktop_app/lib/screens/dashboard_screen.dart"
+}
+[INFO] 2025-11-30T17:30:11.811Z [subscribe] Review comment {
+  "startLine": 85,
+  "endLine": 94,
+  "filePath": "desktop_app/lib/services/api_service.dart"
+}
+[INFO] 2025-11-30T17:30:11.851Z [subscribe] Review comment {
+  "startLine": 68,
+  "endLine": 70,
+  "filePath": "backend_flask/quick_start.py"
+}
+[INFO] 2025-11-30T17:30:11.873Z [subscribe] Review comment {
+  "startLine": 10,
+  "endLine": 12,
+  "filePath": "backend_flask/sse_manager.py"
+}
+[INFO] 2025-11-30T17:30:12.341Z [subscribe] Review comment {
+  "startLine": 22,
+  "endLine": 28,
+  "filePath": "backend_flask/verify_backend.py"
+}
+[INFO] 2025-11-30T17:30:12.342Z [subscribe] Review comment {
+  "startLine": 5,
+  "endLine": 10,
+  "filePath": "desktop_app/lib/services/encryption_service.dart"
+}
+[INFO] 2025-11-30T17:30:13.268Z [subscribe] Review comment {
+  "startLine": 37,
+  "endLine": 42,
+  "filePath": "backend_flask/app.py"
+}
+[INFO] 2025-11-30T17:30:13.272Z [subscribe] Review comment {
+  "startLine": 6,
+  "endLine": 6,
+  "filePath": "desktop_app/lib/services/api_service.dart"
+}
+[INFO] 2025-11-30T17:30:13.881Z [subscribe] Review comment {
+  "startLine": 17,
+  "endLine": 19,
+  "filePath": "backend_flask/db.py"
+}
+[INFO] 2025-11-30T17:30:14.803Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 48,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:15.107Z [subscribe] Review comment {
+  "startLine": 54,
+  "endLine": 59,
+  "filePath": "backend_flask/create_test_owner_001.py"
+}
+[INFO] 2025-11-30T17:30:15.109Z [subscribe] Review comment {
+  "startLine": 7,
+  "endLine": 11,
+  "filePath": "backend_flask/quick_start.py"
+}
+[INFO] 2025-11-30T17:30:15.414Z [subscribe] Review comment {
+  "startLine": 9,
+  "endLine": 71,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:16.027Z [subscribe] Review comment {
+  "startLine": 11,
+  "endLine": 17,
+  "filePath": "backend_flask/routes/auth.py"
+}
+[INFO] 2025-11-30T17:30:16.121Z [subscribe] Review comment {
+  "startLine": 99,
+  "endLine": 105,
+  "filePath": "desktop_app/lib/screens/dashboard_screen.dart"
+}
+[INFO] 2025-11-30T17:30:16.268Z [subscribe] Review comment {
+  "startLine": 73,
+  "endLine": 123,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:16.649Z [subscribe] Review comment {
+  "startLine": 33,
+  "endLine": 46,
+  "filePath": "desktop_app/lib/screens/dashboard_screen.dart"
+}
+[INFO] 2025-11-30T17:30:17.280Z [subscribe] Review comment {
+  "startLine": 190,
+  "endLine": 215,
+  "filePath": "backend_flask/test_all_endpoints.py"
+}
+[INFO] 2025-11-30T17:30:17.282Z [subscribe] Review comment {
+  "startLine": 83,
+  "endLine": 120,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:17.565Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 52,
+  "filePath": "backend_flask/sse_manager.py"
+}
+[INFO] 2025-11-30T17:30:17.651Z [subscribe] Review comment {
+  "startLine": 39,
+  "endLine": 81,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:18.178Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 53,
+  "filePath": "backend_flask/db.py"
+}
+[INFO] 2025-11-30T17:30:18.181Z [subscribe] Review comment {
+  "startLine": 30,
+  "endLine": 47,
+  "filePath": "desktop_app/lib/services/api_service.dart"
+}
+[INFO] 2025-11-30T17:30:18.793Z [subscribe] Review comment {
+  "startLine": 47,
+  "endLine": 47,
+  "filePath": "backend_flask/test_all_endpoints.py"
+}
+[INFO] 2025-11-30T17:30:19.328Z [subscribe] Review comment {
+  "startLine": 8,
+  "endLine": 28,
+  "filePath": "desktop_app/lib/services/api_service.dart"
+}
+[INFO] 2025-11-30T17:30:19.597Z [subscribe] Review comment {
+  "startLine": 44,
+  "endLine": 57,
+  "filePath": "backend_flask/routes/auth.py"
+}
+[INFO] 2025-11-30T17:30:19.712Z [subscribe] Review comment {
+  "startLine": 153,
+  "endLine": 157,
+  "filePath": "backend_flask/test_file_transfer.py"
+}
+[INFO] 2025-11-30T17:30:20.338Z [subscribe] Review comment {
+  "startLine": 74,
+  "endLine": 86,
+  "filePath": "backend_flask/create_owner_account.py"
+}
+[INFO] 2025-11-30T17:30:20.468Z [subscribe] Review comment {
+  "startLine": 49,
+  "endLine": 52,
+  "filePath": "desktop_app/lib/screens/print_preview_screen.dart"
+}
+[INFO] 2025-11-30T17:30:22.014Z [subscribe] Review comment {
+  "startLine": 25,
+  "endLine": 28,
+  "filePath": "desktop_app/lib/screens/print_preview_screen.dart"
+}
+[INFO] 2025-11-30T17:30:22.764Z [subscribe] Review comment {
+  "startLine": 79,
+  "endLine": 82,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:24.014Z [subscribe] Review comment {
+  "startLine": 64,
+  "endLine": 68,
+  "filePath": "desktop_app/windows/runner/flutter_window.cpp"
+}
+[INFO] 2025-11-30T17:30:24.324Z [subscribe] Review comment {
+  "startLine": 13,
+  "endLine": 18,
+  "filePath": "desktop_app/windows/runner/utils.cpp"
+}
+[INFO] 2025-11-30T17:30:24.437Z [subscribe] Review comment {
+  "startLine": 18,
+  "endLine": 24,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:25.248Z [subscribe] Review comment {
+  "startLine": 6,
+  "endLine": 9,
+  "filePath": "backend_flask/verify_owner_upload.py"
+}
+[INFO] 2025-11-30T17:30:25.553Z [subscribe] Review comment {
+  "startLine": 17,
+  "endLine": 18,
+  "filePath": "backend_flask/app.py"
+}
+[INFO] 2025-11-30T17:30:25.654Z [subscribe] Review comment {
+  "startLine": 18,
+  "endLine": 44,
+  "filePath": "backend_flask/monitor_uploads.py"
+}
+[INFO] 2025-11-30T17:30:26.480Z [subscribe] Review comment {
+  "startLine": 115,
+  "endLine": 116,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:26.481Z [subscribe] Review comment {
+  "startLine": 76,
+  "endLine": 77,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:27.089Z [subscribe] Review comment {
+  "startLine": 49,
+  "endLine": 65,
+  "filePath": "desktop_app/lib/services/api_service.dart"
+}
+[INFO] 2025-11-30T17:30:27.091Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 54,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:28.315Z [subscribe] Review comment {
+  "startLine": 120,
+  "endLine": 123,
+  "filePath": "backend_flask/routes/auth.py"
+}
+[INFO] 2025-11-30T17:30:28.623Z [subscribe] Review comment {
+  "startLine": 52,
+  "endLine": 59,
+  "filePath": "backend_flask/monitor_uploads.py"
+}
+[INFO] 2025-11-30T17:30:28.624Z [subscribe] Review comment {
+  "startLine": 115,
+  "endLine": 116,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:29.240Z [subscribe] Review comment {
+  "startLine": 8,
+  "endLine": 8,
+  "filePath": "backend_flask/monitor_uploads.py"
+}
+[INFO] 2025-11-30T17:30:29.546Z [subscribe] Review comment {
+  "startLine": 99,
+  "endLine": 121,
+  "filePath": "desktop_app/lib/screens/print_preview_screen.dart"
+}
+[INFO] 2025-11-30T17:30:29.854Z [subscribe] Review comment {
+  "startLine": 31,
+  "endLine": 46,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:30.464Z [subscribe] Review comment {
+  "startLine": 37,
+  "endLine": 44,
+  "filePath": "backend_flask/create_owner_account.py"
+}
+[INFO] 2025-11-30T17:30:30.466Z [subscribe] Review comment {
+  "startLine": 67,
+  "endLine": 67,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:30.775Z [subscribe] Review comment {
+  "startLine": 88,
+  "endLine": 110,
+  "filePath": "backend_flask/routes/auth.py"
+}
+[INFO] 2025-11-30T17:30:32.321Z [subscribe] Review comment {
+  "startLine": 67,
+  "endLine": 69,
+  "filePath": "backend_flask/monitor_uploads.py"
+}
+[INFO] 2025-11-30T17:30:32.411Z [subscribe] Review comment {
+  "startLine": 292,
+  "endLine": 312,
+  "filePath": "backend_flask/test_all_endpoints.py"
+}
+[INFO] 2025-11-30T17:30:32.531Z [subscribe] Review comment {
+  "startLine": 181,
+  "endLine": 222,
+  "filePath": "desktop_app/windows/runner/win32_window.cpp"
+}
+[INFO] 2025-11-30T17:30:32.660Z [subscribe] Review comment {
+  "startLine": 65,
+  "endLine": 66,
+  "filePath": "backend_flask/test_all_endpoints.py"
+}
+[INFO] 2025-11-30T17:30:33.434Z [subscribe] Review comment {
+  "startLine": 76,
+  "endLine": 77,
+  "filePath": "desktop_app/lib/screens/login_screen.dart"
+}
+[INFO] 2025-11-30T17:30:33.849Z [subscribe] Review comment {
+  "startLine": 30,
+  "endLine": 30,
+  "filePath": "desktop_app/windows/runner/win32_window.cpp"
+}
+[INFO] 2025-11-30T17:30:34.156Z [subscribe] Review comment {
+  "startLine": 11,
+  "endLine": 13,
+  "filePath": "backend_flask/routes/files.py"
+}
+[INFO] 2025-11-30T17:30:34.157Z [subscribe] Review comment {
+  "startLine": 23,
+  "endLine": 46,
+  "filePath": "backend_flask/sse_manager.py"
+}
+[INFO] 2025-11-30T17:30:34.711Z [subscribe] Review comment {
+  "startLine": 68,
+  "endLine": 90,
+  "filePath": "backend_flask/create_surya_account.py"
+}
+[INFO] 2025-11-30T17:30:35.079Z [subscribe] Review comment {
+  "startLine": 24,
+  "endLine": 29,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:35.701Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 5,
+  "filePath": "backend_flask/create_surya_account.py"
+}
+[INFO] 2025-11-30T17:30:36.611Z [subscribe] Review comment {
+  "startLine": 103,
+  "endLine": 103,
+  "filePath": "desktop_app/windows/runner/win32_window.cpp"
+}
+[INFO] 2025-11-30T17:30:37.226Z [subscribe] Review comment {
+  "startLine": 114,
+  "endLine": 121,
+  "filePath": "desktop_app/windows/runner/win32_window.cpp"
+}
+[INFO] 2025-11-30T17:30:38.152Z [subscribe] Review comment {
+  "startLine": 7,
+  "endLine": 7,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:39.988Z [subscribe] Review comment {
+  "startLine": 64,
+  "endLine": 69,
+  "filePath": "desktop_app/windows/runner/win32_window.cpp"
+}
+[INFO] 2025-11-30T17:30:41.342Z [subscribe] Review comment {
+  "startLine": 117,
+  "endLine": 117,
+  "filePath": "backend_flask/routes/files.py"
+}
+[INFO] 2025-11-30T17:30:42.447Z [subscribe] Review comment {
+  "startLine": 68,
+  "endLine": 71,
+  "filePath": "backend_flask/routes/auth.py"
+}
+[INFO] 2025-11-30T17:30:42.449Z [subscribe] Review comment {
+  "startLine": 23,
+  "endLine": 28,
+  "filePath": "backend_flask/create_surya_account.py"
+}
+[INFO] 2025-11-30T17:30:43.974Z [subscribe] Review comment {
+  "startLine": 15,
+  "endLine": 16,
+  "filePath": "desktop_app/lib/services/notification_service.dart"
+}
+[INFO] 2025-11-30T17:30:44.294Z [subscribe] Review comment {
+  "startLine": 38,
+  "endLine": 40,
+  "filePath": "backend_flask/routes/files.py"
+}
+[INFO] 2025-11-30T17:30:45.176Z [subscribe] Review comment {
+  "startLine": 209,
+  "endLine": 213,
+  "filePath": "backend_flask/routes/files.py"
+}
+[INFO] 2025-11-30T17:30:46.261Z [subscribe] Review comment {
+  "startLine": 155,
+  "endLine": 155,
+  "filePath": "backend_flask/test_all_endpoints.py"
+}
+[INFO] 2025-11-30T17:30:48.598Z [subscribe] Review comment {
+  "startLine": 89,
+  "endLine": 89,
+  "filePath": "backend_flask/routes/owners.py"
+}
+[INFO] 2025-11-30T17:30:48.599Z [subscribe] Review comment {
+  "startLine": 39,
+  "endLine": 46,
+  "filePath": "backend_flask/create_surya_account.py"
+}
+[INFO] 2025-11-30T17:30:54.428Z [subscribe] Review comment {
+  "startLine": 32,
+  "endLine": 34,
+  "filePath": "backend_flask/routes/files.py"
+}
+[INFO] 2025-11-30T17:30:54.737Z [subscribe] Review comment {
+  "startLine": 61,
+  "endLine": 67,
+  "filePath": "backend_flask/create_surya_account.py"
+}
+[INFO] 2025-11-30T17:30:56.629Z [subscribe] Review comment {
+  "startLine": 48,
+  "endLine": 51,
+  "filePath": "desktop_app/windows/runner/utils.cpp"
+}
+[INFO] 2025-11-30T17:30:57.292Z [subscribe] Received additional comments {
+  "counts": {
+    "assertive": 99,
+    "additional": 105,
+    "outsideDiffRange": 4,
+    "duplicate": 1
+  }
+}
+[INFO] 2025-11-30T17:30:57.297Z [subscribe] Review completed
+[INFO] 2025-11-30T17:31:12.539Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:31:19.089Z [getFilesToBeReviewed] Showing incremental files from commit: ddc5e22930178a4368f97167980a6fd5e889b5a6
+[INFO] 2025-11-30T17:33:09.010Z [gitStateChangeListener] Files state changed
+[INFO] 2025-11-30T17:33:23.827Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:33:30.338Z [getFilesToBeReviewed] Showing incremental files from commit: ddc5e22930178a4368f97167980a6fd5e889b5a6
+[INFO] 2025-11-30T17:33:50.976Z [gitStateChangeListener] Files state changed
+[INFO] 2025-11-30T17:34:05.436Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:34:11.937Z [getFilesToBeReviewed] Showing incremental files from commit: ddc5e22930178a4368f97167980a6fd5e889b5a6
+[INFO] 2025-11-30T17:40:56.756Z [GitAPI] File c:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite exceeds size limit. Skipping...
+[INFO] 2025-11-30T17:41:02.471Z [getFilesToBeReviewed] Showing incremental files from commit: ddc5e22930178a4368f97167980a6fd5e889b5a6
+[INFO] 2025-11-30T17:41:06.714Z [reviewCode] Full review: found 1 files
+[INFO] 2025-11-30T17:41:06.979Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coderabbit.yaml
+[WARN] 2025-11-30T17:41:06.981Z [getYamlConfig] File .coderabbit.yaml does not exist
+[INFO] 2025-11-30T17:41:06.982Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coderabbit.yml
+[WARN] 2025-11-30T17:41:06.986Z [getYamlConfig] File .coderabbit.yml does not exist
+[INFO] 2025-11-30T17:41:06.986Z [getYamlConfig] Checking for yaml config at file:///c%3A/Users/jaswa/Downloads/SafeCopy/.coder.yaml
+[WARN] 2025-11-30T17:41:06.989Z [getYamlConfig] File .coder.yaml does not exist
+[INFO] 2025-11-30T17:41:08.778Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "setting_up",
+    "timestamp": 1764524467321
+  },
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782"
+}
+[INFO] 2025-11-30T17:41:09.367Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "summarizing",
+    "timestamp": 1764524467765
+  },
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782"
+}
+[INFO] 2025-11-30T17:41:31.431Z [subscribe] Review title {
+  "title": "Migrate backend to Flask and SQLite with SSE notifications"
+}
+[INFO] 2025-11-30T17:41:31.943Z [subscribe] Review status {
+  "type": "review_status",
+  "payload": {
+    "reviewStatus": "reviewing",
+    "timestamp": 1764524489942
+  },
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782"
+}
+[INFO] 2025-11-30T17:41:49.705Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 5,
+  "filePath": "backend_flask/test_owner_001_info.txt"
+}
+[ERROR] 2025-11-30T17:41:49.707Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:50.711Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:51.723Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:52.728Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:52.728Z [CommentQueue] Max retries reached for comment: {
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782",
+  "newComment": {
+    "filename": "backend_flask/test_owner_001_info.txt",
+    "startLine": 1,
+    "endLine": 5,
+    "type": "actionable",
+    "codegenInstructions": "In backend_flask/test_owner_001_info.txt lines 1-5 this file contains hardcoded test credentials (including the password on line 5) that must be removed from version control; remove the file from the repo history (git rm --cached backend_flask/test_owner_001_info.txt and rewrite history/force-push or use git-filter-repo/BFG to purge), add the filename to .gitignore so it is not tracked going forward, move credentials into environment variables or a secrets manager (or a local .env that is also gitignored) and update tests to load from those variables, and rotate the exposed password for test-owner-001@example.com immediately.",
+    "comment": "**Remove hardcoded credentials from version control.**\n\nThis file exposes plain-text test credentials (password on line 5) and should never be committed to a repository. Credentials—even for testing—must be protected and managed securely.\n\n\n\n**Recommended actions:**\n\n1. **Remove this file from version control:** Run `git rm --cached backend_flask/test_owner_001_info.txt` and force-push to remove it from history.\n2. **Add to `.gitignore`:** If this file must exist locally for development, add it to `.gitignore` so it won't be tracked.\n3. **Use environment variables or a secrets manager:** Store test credentials in environment variables, a `.env` file (also in `.gitignore`), or a dedicated secrets management system (e.g., AWS Secrets Manager, HashiCorp Vault).\n4. **Rotate credentials:** Change the password for `test-owner-001@example.com` since it has been exposed in version control.\n\nExample structure using environment variables:\n\n```\n# .env (added to .gitignore)\nTEST_OWNER_EMAIL=test-owner-001@example.com\nTEST_OWNER_ID=d41b0186-a1ea-402c-b969-2ecd319af609\nTEST_OWNER_PASSWORD=owner123\n```\n\nThen load these in your test setup rather than hardcoding them.",
+    "suggestions": [],
+    "analysis": null,
+    "indicatorTypes": [
+      "potential_issue"
+    ],
+    "severity": "critical",
+    "toolOutputs": {},
+    "fingerprint": "",
+    "id": "e777306c-c401-4f89-9918-3e1614bb237a"
+  },
+  "retryCount": 3
+}
+[INFO] 2025-11-30T17:41:52.790Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 13,
+  "filePath": "backend_flask/owner_account_info.txt"
+}
+[ERROR] 2025-11-30T17:41:52.794Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:41:52.863Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 8,
+  "filePath": "desktop_app/lib/test_imports.dart"
+}
+[ERROR] 2025-11-30T17:41:53.808Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:41:54.312Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 441,
+  "filePath": "desktop_app/.dart_tool/package_config.json"
+}
+[ERROR] 2025-11-30T17:41:54.811Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:55.824Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:56.840Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:57.856Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:41:58.000Z [subscribe] Review comment {
+  "startLine": 9,
+  "endLine": 11,
+  "filePath": "CHANGELOG_SSE_NOTIFICATIONS.md"
+}
+[ERROR] 2025-11-30T17:41:58.861Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:41:59.867Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:00.762Z [subscribe] Review comment {
+  "startLine": 40,
+  "endLine": 46,
+  "filePath": "desktop_app/windows/CMakeLists.txt"
+}
+[ERROR] 2025-11-30T17:42:00.869Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:01.877Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:01.878Z [CommentQueue] Max retries reached for comment: {
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782",
+  "newComment": {
+    "filename": "backend_flask/owner_account_info.txt",
+    "startLine": 1,
+    "endLine": 13,
+    "type": "actionable",
+    "codegenInstructions": "In backend_flask/owner_account_info.txt around lines 1 to 13, this file contains plaintext credentials and JWTs which must be removed from the repo immediately; delete the file from the branch, stop the PR merge, and remove all sensitive values from commits by rewriting history (git filter-repo or git filter-branch) and then force-push; rotate the exposed password and tokens immediately; add patterns (e.g., owner_account_info.txt, *_credentials.txt, *_tokens.txt, *.txt if appropriate) to .gitignore and ensure no future commits include secrets; move all secrets into environment variables or a secrets manager (AWS Secrets Manager / Vault / dotenv loaded from outside VCS) and update the app to read credentials from those secure sources.",
+    "comment": "**🚨 CRITICAL: Remove credentials from version control immediately.**\n\nThis file contains sensitive credentials and authentication tokens in plain text, posing a severe security risk:\n\n- **Owner credentials**: Email, password, and ID are exposed\n- **JWT tokens**: Access and Refresh tokens enable account impersonation\n- **Permanent exposure**: Once committed, credentials remain in git history even if the file is deleted\n- **Compliance violation**: PII exposure violates GDPR/CCPA requirements\n\n**Immediate actions required:**\n1. **Do not merge this PR** until credentials are removed\n2. **Rotate all exposed credentials** (password, tokens) immediately\n3. **Clean repository history** using `git filter-branch` or similar tools to remove this file and its history\n4. **Add to `.gitignore`**: Create/update `.gitignore` to exclude credential files (e.g., `*.txt`, `*_credentials.txt`, `*_tokens.txt`)\n5. **Use environment variables or secrets manager** (e.g., AWS Secrets Manager, HashiCorp Vault, dotenv files) instead\n\n**Proper approach**: Store credentials in environment variables or a secure secrets management system, never in version control.",
+    "suggestions": [],
+    "analysis": null,
+    "indicatorTypes": [
+      "potential_issue"
+    ],
+    "severity": "critical",
+    "toolOutputs": {},
+    "fingerprint": "",
+    "id": "282da831-e498-4f30-9c8f-73bd0d72c247"
+  },
+  "retryCount": 3
+}
+[ERROR] 2025-11-30T17:42:01.882Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:02.298Z [subscribe] Review comment {
+  "startLine": 64,
+  "endLine": 72,
+  "filePath": "desktop_app/windows/flutter/CMakeLists.txt"
+}
+[ERROR] 2025-11-30T17:42:02.891Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:03.896Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:03.897Z [CommentQueue] Max retries reached for comment: {
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782",
+  "newComment": {
+    "filename": "desktop_app/lib/test_imports.dart",
+    "startLine": 1,
+    "endLine": 8,
+    "type": "actionable",
+    "codegenInstructions": "In desktop_app/lib/test_imports.dart lines 1-8, this file is a test helper placed under lib (which causes it to be compiled into the package); move and rename it to desktop_app/test/test_imports.dart and update any references/imports in the test suite to point to the new path (ensure no library-only imports remain and adjust relative import paths or package: imports accordingly).",
+    "comment": "**Relocate this file to the `test/` directory.**\n\nTest files should not be in the `lib/` directory; they will be compiled as part of the library package. Rename and move this file from `desktop_app/lib/test_imports.dart` to `desktop_app/test/test_imports.dart`.",
+    "suggestions": [],
+    "analysis": null,
+    "indicatorTypes": [
+      "potential_issue"
+    ],
+    "severity": "major",
+    "toolOutputs": {},
+    "fingerprint": "",
+    "id": "01a80602-1b3e-490f-b411-d673bbf55247"
+  },
+  "retryCount": 3
+}
+[ERROR] 2025-11-30T17:42:03.899Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:04.901Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:05.502Z [subscribe] Review comment {
+  "startLine": 24,
+  "endLine": 24,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[ERROR] 2025-11-30T17:42:05.918Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:05.919Z [CommentQueue] Max retries reached for comment: {
+  "reviewId": "3810437b-9bb2-4a64-b439-feb54bd1b782",
+  "newComment": {
+    "filename": "desktop_app/.dart_tool/package_config.json",
+    "startLine": 1,
+    "endLine": 441,
+    "type": "actionable",
+    "codegenInstructions": "In desktop_app/.dart_tool/package_config.json lines 1-441, this auto-generated pub tool file (contains machine-specific absolute paths) should not be versioned; remove it from the repository and prevent future commits by running git rm --cached desktop_app/.dart_tool/package_config.json, add .dart_tool/ (or at minimum desktop_app/.dart_tool/) to .gitignore, commit the .gitignore change, and instruct developers to regenerate the file locally with flutter pub get so each environment gets its own package_config.json.",
+    "comment": "**Do not version auto-generated Dart/Flutter tooling files.**\n\nThis `package_config.json` file is auto-generated by the `pub` package manager (as indicated by `\"generator\": \"pub\"` on line 437) and should not be committed to version control. It will be regenerated when developers run `flutter pub get` or `flutter pub upgrade` on their machines.\n\nAdditionally, the file contains machine-specific absolute paths (e.g., `C:/Users/surya/AppData/Local/Pub/Cache`) that are not portable across different developer environments or CI/CD systems. This will cause checkout failures or path resolution issues for any team member with a different machine setup.\n\n**Recommended action:**\n1. Remove this file from version control using `git rm --cached desktop_app/.dart_tool/package_config.json`\n2. Add `.dart_tool/` to your `.gitignore` file if not already present\n3. Regenerate the file locally with `flutter pub get` after making the gitignore change\n4. This file will be automatically regenerated in each developer's local environment when they run pub commands",
+    "suggestions": [],
+    "analysis": null,
+    "indicatorTypes": [
+      "potential_issue"
+    ],
+    "severity": "critical",
+    "toolOutputs": {},
+    "fingerprint": "",
+    "id": "a5789a70-2c6b-43a5-a3cc-a65574fb9d9d"
+  },
+  "retryCount": 3
+}
+[ERROR] 2025-11-30T17:42:05.922Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:06.295Z [subscribe] Review comment {
+  "startLine": 54,
+  "endLine": 54,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[INFO] 2025-11-30T17:42:06.911Z [subscribe] Review comment {
+  "startLine": 10,
+  "endLine": 11,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[ERROR] 2025-11-30T17:42:06.925Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:07.054Z [subscribe] Review comment {
+  "startLine": 24,
+  "endLine": 24,
+  "filePath": "backend_flask/schema_sqlite.sql"
+}
+[ERROR] 2025-11-30T17:42:07.931Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:08.946Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:09.956Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:09.989Z [subscribe] Review comment {
+  "startLine": 1,
+  "endLine": 1,
+  "filePath": "desktop_app/.flutter-plugins-dependencies"
+}
+[ERROR] 2025-11-30T17:42:10.959Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:11.531Z [subscribe] Review comment {
+  "startLine": 113,
+  "endLine": 114,
+  "filePath": "FILE_UPLOAD_FLOW_ANALYSIS.md"
+}
+[ERROR] 2025-11-30T17:42:11.974Z [CommentQueue] Failed to process comment: {}
+[ERROR] 2025-11-30T17:42:12.988Z [CommentQueue] Failed to process comment: {}
+[INFO] 2025-11-30T17:42:13.263Z [subscribe] Review comment {
+  "startLine": 25,
+  "endLine": 25,
+  "filePath": "desktop_app/windows/flutter/CMakeLists.txt"
+}

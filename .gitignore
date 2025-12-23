@@ -1,9 +1,12 @@
+## Root .gitignore for SafeCopy
+
 # Miscellaneous
 *.class
 *.log
 *.pyc
 *.swp
 .DS_Store
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -12,16 +15,39 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# Node modules
+node_modules/
+
+# Backend coverage
+backend/coverage/
+backend/coverage/**
+lcov.info
+.nyc_output/
+**/lcov-report/
+
+# IDE
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Environment files
+backend/.env
+.env
+env/
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+/build/
+**/build/
+
+# Python
+__pycache__/
+*.pyc
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -30,8 +56,8 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
 /coverage/
+**/ephemeral/
 
 # Symbolication related
 app.*.symbols
@@ -39,7 +65,12 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Database
+*.sqlite
+*.db
+backend_flask/database.sqlite

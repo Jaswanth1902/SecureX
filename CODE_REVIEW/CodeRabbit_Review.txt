@@ -1,0 +1,17 @@
+CodeRabbit Review — Paste output here
+
+Instructions (copy/paste from VS Code Command Palette):
+- Open Command Palette: Ctrl+Shift+P
+- Type: CodeRabbit: Show Review
+- Select the action (press Enter)
+- When review output appears in the single panel: press Ctrl+A then Ctrl+C to copy
+- Paste the copied content below this line
+
+--- Paste review here ---
+
+Metadata:
+- Date: 
+- Triggered by (file/PR/commit): 
+- Notes / follow-ups:
+
+--- End ---
