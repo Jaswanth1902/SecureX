@@ -35,6 +35,12 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
+    // Validate password strength
+    const pwValidation = AuthService.validatePassword(password);
+    if (!pwValidation.isValid) {
+      return res.status(400).json({ error: "invalid_password", messages: pwValidation.errors });
+    }
+
     // Validate public key format (basic check for PEM format)
     if (!public_key.startsWith("-----BEGIN PUBLIC KEY-----")) {
       return res.status(400).json({

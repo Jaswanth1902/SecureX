@@ -59,7 +59,9 @@ class EncryptionService {
       // Recommended IV length for AES-GCM is 12 bytes
       final rnd = Random.secure();
       final iv = Uint8List(12);
-      for (int i = 0; i < iv.length; i++) iv[i] = rnd.nextInt(256);
+      for (int i = 0; i < iv.length; i++) {
+        iv[i] = rnd.nextInt(256);
+      }
 
       final algorithm = AesGcm.with256bits();
       final secretKey = SecretKey(key);

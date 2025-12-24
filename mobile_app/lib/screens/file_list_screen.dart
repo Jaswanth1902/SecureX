@@ -67,7 +67,7 @@ class _FileListScreenState extends State<FileListScreen> {
           if (data['files'] is List) {
             validatedFiles = (data['files'] as List)
                 .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item as Map))
+                .map((item) => Map<String, dynamic>.from(item))
                 .toList();
           }
         } catch (e) {

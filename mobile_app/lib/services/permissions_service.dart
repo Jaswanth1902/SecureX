@@ -17,51 +17,56 @@ class PermissionsService {
   /// For Android 13+, requests individual media permissions instead of generic storage
   static Future<bool> requestStoragePermission() async {
     try {
-      if (Platform.isAndroid) {
-        // Get Android SDK version
-        final plugin = DeviceInfoPlugin();
-        final info = await plugin.androidInfo;
-        final sdkInt = info.version.sdkInt ?? 0;
-
-        debugPrint('📱 Android SDK Version: $sdkInt');
-
-        if (sdkInt >= 33) {
-          // Android 13+ (API 33+) - Use scoped storage with individual media permissions
-          debugPrint('🔒 Using Android 13+ scoped storage permissions');
-
-          final photos = await Permission.photos.request();
-          final videos = await Permission.videos.request();
-          final audio = await Permission.audio.request();
-          // Also request MANAGE_EXTERNAL_STORAGE for document access if possible
-          final documents = await Permission.storage.request();
-          final manage = await Permission.manageExternalStorage.request();
-
-          final granted = photos.isGranted ||
-              videos.isGranted ||
-              audio.isGranted ||
-              documents.isGranted ||
-              manage.isGranted;
-
-          debugPrint('📸 Photos: $photos');
-          debugPrint('🎬 Videos: $videos');
-          debugPrint('🔊 Audio: $audio');
-          debugPrint('📄 Documents: $documents');
-
-          return granted;
-        } else {
-          // Android 12 and below - Use legacy storage permission
-          debugPrint('💾 Using Android 12 and below storage permissions');
-          // On Android 11+ we can request MANAGE_EXTERNAL_STORAGE for broad file access
-          if (sdkInt >= 30) {
-            final manageStatus = await Permission.manageExternalStorage.request();
-            debugPrint('🔐 Manage External Storage: $manageStatus');
-            if (manageStatus.isGranted) return true;
-          }
-          final status = await Permission.storage.request();
-          debugPrint('💾 Storage: $status');
-          return status.isGranted;
-        }
+      if (!Platform.isAndroid) {
+        return true;
       }
+      // Get Android SDK version
+      final plugin = DeviceInfoPlugin();
+      final info = await plugin.androidInfo;
+      final sdkInt = info.version.sdkInt ?? 0;
+
+      debugPrint('📱 Android SDK Version: $sdkInt');
+
+      if (sdkInt >= 33) {
+        // Android 13+ (API 33+) - Use scoped storage with individual media permissions
+        debugPrint('🔒 Using Android 13+ scoped storage permissions');
+
+        final photos = await Permission.photos.request();
+        final videos = await Permission.videos.request();
+        final audio = await Permission.audio.request();
+        // Also request MANAGE_EXTERNAL_STORAGE for document access if possible
+        final documents = await Permission.storage.request();
+        final manage = await Permission.manageExternalStorage.request();
+
+        final granted = photos.isGranted ||
+            videos.isGranted ||
+            audio.isGranted ||
+            documents.isGranted ||
+            manage.isGranted;
+
+        debugPrint('📸 Photos: $photos');
+        debugPrint('🎬 Videos: $videos');
+        debugPrint('🔊 Audio: $audio');
+        debugPrint('📄 Documents: $documents');
+
+        return granted;
+      }
+      if (sdkInt >= 30) {
+        // Android 12 and below - Use legacy storage permission
+        debugPrint('💾 Using Android 12 and below storage permissions');
+        // On Android 11+ we can request MANAGE_EXTERNAL_STORAGE for broad file access
+        final manageStatus = await Permission.manageExternalStorage.request();
+        debugPrint('🔐 Manage External Storage: $manageStatus');
+        if (manageStatus.isGranted) return true;
+        final status = await Permission.storage.request();
+        debugPrint('💾 Storage: $status');
+        return status.isGranted;
+      }
+      // Android 6-10 (Legacy storage)
+      debugPrint('📂 Requesting Android 6-10 permissions (legacy)');
+      final status = await Permission.storage.request();
+      debugPrint('💾 Storage: $status');
+      return status.isGranted;
       return true;
     } catch (e) {
       debugPrint('❌ Error requesting storage permission: $e');
@@ -139,8 +144,7 @@ class PermissionsService {
             Permission.manageExternalStorage.request(),
           ]);
 
-          final allGranted =
-              results.any((status) => status.isGranted || status.isDenied);
+          final allGranted = results.any((status) => status.isGranted);
 
           if (allGranted) {
             debugPrint('✅ File access permissions granted (Android 13+)');
@@ -235,7 +239,7 @@ class PermissionsService {
 
   /// Open app settings if permissions are permanently denied
   static Future<void> openAppSettingsPage() async {
-    openAppSettings();
+    await openAppSettings();
   }
 
   /// Open app settings page to allow user to grant All Files Access (Android 11+)

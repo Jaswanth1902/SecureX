@@ -2,8 +2,8 @@
 // Handles JWT token generation, validation, and password hashing
 
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { hashPassword: hashPasswordUtil, verifyPassword: verifyPasswordUtil } = require('../utils/passwordUtil');
 
 class AuthService {
   /**
@@ -12,26 +12,18 @@ class AuthService {
    * @returns {Promise<string>} - Hashed password
    */
   static async hashPassword(password) {
-    try {
-      const salt = await bcrypt.genSalt(10);
-      return await bcrypt.hash(password, salt);
-    } catch (error) {
-      throw new Error(`Password hashing failed: ${error.message}`);
-    }
+    // Delegate to shared password utility which enforces secure defaults
+    return await hashPasswordUtil(password);
   }
 
   /**
-   * Compare password with hash
+   * Compare password with hash (verify)
    * @param {string} password - Plain text password
    * @param {string} hash - Password hash
    * @returns {Promise<boolean>} - True if password matches
    */
   static async comparePassword(password, hash) {
-    try {
-      return await bcrypt.compare(password, hash);
-    } catch (error) {
-      throw new Error(`Password comparison failed: ${error.message}`);
-    }
+    return await verifyPasswordUtil(password, hash);
   }
 
   /**

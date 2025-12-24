@@ -37,21 +37,43 @@ print("RSA KEY PAIR GENERATED")
 print("="*60)
 
 # Save keys to files
+import os
 with open('surya_private_key.pem', 'w') as f:
     f.write(private_pem)
-print("\nPrivate key saved to: surya_private_key.pem")
+# Restrict private key file permissions to user-only
+try:
+    os.chmod('surya_private_key.pem', 0o600)
+except Exception:
+    # Some platforms (e.g., Windows) may not support chmod exactly as POSIX; warn but continue
+    print('Warning: could not set strict file permissions on surya_private_key.pem; ensure this file is protected.')
+print("\nPrivate key saved to: surya_private_key.pem (permissions set to user-only where supported)")
 
 with open('surya_public_key.pem', 'w') as f:
     f.write(public_pem)
 print("Public key saved to: surya_public_key.pem")
 
 # Owner account details
+import getpass
+import secrets
+
+owner_email = "surya@gmail.com"
+owner_full_name = "Sathi surya"
+
+# Prompt for password (do NOT store plaintext passwords on disk)
+password = getpass.getpass("Enter password for new owner (leave blank to generate a secure password): ")
+if not password:
+    # Generate a strong random password but DO NOT print or persist it.
+    # The plaintext password is never written to disk or logs; it is transmitted to the server
+    # where it will be hashed and stored as a password hash only.
+    password = secrets.token_urlsafe(16)
+
 owner_data = {
-    "email": "surya@gmail.com",
-    "password": "sathi123",
-    "full_name": "Sathi surya",
-    "public_key": public_pem
-}
+    "email": owner_email,
+    "password": password,
+    "full_name": owner_full_name,
+    "public_key": public_pem,
+    "must_reset_password_on_first_login": True
+} 
 
 # Register owner account
 print("\n" + "="*60)
@@ -67,36 +89,28 @@ try:
     
     if response.status_code == 201:
         result = response.json()
-        print("\nOwner account created successfully!")
-        print(f"\nOwner ID: {result['owner']['id']}")
+        print("\nOwner account created successfully.")
+        print(f"Owner ID: {result['owner']['id']}")
         print(f"Email: {result['owner']['email']}")
-        print(f"Name: {result['owner']['full_name']}")
-        print(f"\nAccess Token: {result['accessToken'][:50]}...")
-        
-        # Save account info
+        # Do not display tokens or passwords
+
+        # Save only non-sensitive account metadata
         with open('surya_account_info.txt', 'w') as f:
-            f.write("OWNER ACCOUNT CREDENTIALS - Sathi Surya\n")
+            f.write("OWNER ACCOUNT INFO - REDACTED FOR SECURITY\n")
             f.write("="*60 + "\n\n")
             f.write(f"Owner ID: {result['owner']['id']}\n")
-            f.write(f"Email: {owner_data['email']}\n")
-            f.write(f"Password: {owner_data['password']}\n")
-            f.write(f"Name: {owner_data['full_name']}\n\n")
-            f.write("Access Token:\n")
-            f.write(f"{result['accessToken']}\n\n")
-            f.write("Refresh Token:\n")
-            f.write(f"{result['refreshToken']}\n")
-        
-        print("Account info saved to: surya_account_info.txt")
-        
-        # Save key pair info for desktop app
-        print("\n" + "="*60)
-        print("DESKTOP APP KEY SETUP")
+            f.write(f"Email: {result['owner']['email']}\n")
+            f.write(f"Name: {result['owner']['full_name']}\n\n")
+            f.write("Access Token: REDACTED\n")
+            f.write("Refresh Token: REDACTED\n")
+            f.write("must_reset_password_on_first_login: true\n")
+            f.write("\nPlease remove this file and any key files from version control and store private keys securely.\n")
+        print("Account metadata saved to: surya_account_info.txt (REDACTED)")
+
+        # Desktop app info (non-sensitive guidance)
+        print("\nDESKTOP APP KEY SETUP")
         print("="*60)
-        print("\nTo use this account in the desktop app:")
-        print("1. The private key needs to be in the desktop app's documents folder")
-        print("2. File location: Documents/owner_private_key.json")
-        print("\nThe key components have been saved in PEM format.")
-        print("You can manually convert and place them if needed.")
+        print("The public key was registered; private key file created locally at surya_private_key.pem (keep it secure).")
         
     else:
         print(f"\nRegistration failed: {response.status_code}")

@@ -8,6 +8,66 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 class ApiService {
+    // ========================================
+    // LOGIN USER
+    // ========================================
+    Future<LoginResponse> loginUser({
+      required String email,
+      required String password,
+    }) async {
+      try {
+        final url = Uri.parse('$baseUrl/api/auth/login');
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': email, 'password': password}),
+        );
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          return LoginResponse.fromJson(json);
+        } else {
+          throw ApiException(
+            'Login failed: ${response.statusCode}',
+            response.statusCode,
+          );
+        }
+      } catch (e) {
+        throw ApiException('Login error: $e', -1);
+      }
+    }
+
+    // ========================================
+    // REGISTER USER
+    // ========================================
+    Future<RegisterResponse> registerUser({
+      required String email,
+      required String password,
+      required String fullName,
+    }) async {
+      try {
+        final url = Uri.parse('$baseUrl/api/auth/register');
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': email,
+            'password': password,
+            'full_name': fullName,
+          }),
+        );
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          return RegisterResponse.fromJson(json);
+        } else {
+          throw ApiException(
+            'Registration failed: ${response.statusCode}',
+            response.statusCode,
+          );
+        }
+      } catch (e) {
+        throw ApiException('Registration error: $e', -1);
+      }
+    }
   final String baseUrl = 'http://10.117.97.71:5000'; // Updated to match WiFi IP from ipconfig
 
   // ... (lines 13-86 omitted)

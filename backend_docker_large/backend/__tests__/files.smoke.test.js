@@ -3,6 +3,8 @@ process.env.JWT_SECRET =
 process.env.JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET ||
   "test_jwt_refresh_secret_which_is_long_enough_123456";
+// Ensure encryption key is set for test environment
+process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "test_encryption_key_which_is_long_enough_123456";
 
 const request = require("supertest");
 const app = require("../server");
@@ -30,20 +32,29 @@ describe("Files API smoke tests (mocked DB)", () => {
   });
 
   test("register -> login -> upload -> list -> print -> delete flow (mock DB)", async () => {
-    // Mock register: first check (no existing user), then insert
-    db.query.mockImplementationOnce(() => Promise.resolve({ rows: [] }));
-    db.query.mockImplementationOnce(() =>
-      Promise.resolve({
-        rows: [
+    // Robust DB mock: return responses based on SQL snippets to avoid ordering fragility
+    db.query.mockImplementation((text, params) => {
+      const sql = String(text).toLowerCase();
+      if (sql.includes('select id from users where email')) {
+        // user existence check
+        return Promise.resolve({ rows: [] });
+      }
+      if (sql.includes('insert into users')) {
+        return Promise.resolve({ rows: [
           {
             id: userPayload.sub,
             email: userPayload.email,
             full_name: null,
             created_at: new Date(),
           },
-        ],
-      })
-    );
+        ] });
+      }
+      if (sql.includes('insert into sessions')) {
+        return Promise.resolve({ rows: [{ id: 'session-1' }] });
+      }
+      // Default
+      return Promise.resolve({ rows: [] });
+    });
 
     // Call register endpoint
     const regRes = await request(app)

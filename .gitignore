@@ -37,3 +37,7 @@ venv/
 env/
 .env
 
+# Security: ignore generated private keys and exported account info
+backend_flask/*.pem
+backend_flask/surya_account_info.txt
+
