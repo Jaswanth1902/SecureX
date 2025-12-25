@@ -213,6 +213,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showFeedbackDialog(BuildContext context, bool isDark) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E0A30) : Colors.white,
+          title: Text(
+            'Send Feedback',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: TextField(
+            controller: controller,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+            decoration: InputDecoration(
+              hintText: 'Tell us what you think...',
+              hintStyle: TextStyle(
+                color: isDark ? Colors.grey : Colors.grey.shade400,
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: isDark ? Colors.purple : Colors.purple,
+                ),
+              ),
+            ),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final message = controller.text.trim();
+                if (message.isNotEmpty) {
+                  final success = await context
+                      .read<AuthService>()
+                      .sendFeedback(message);
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? 'Feedback sent!'
+                              : 'Failed to send feedback',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeService = context.watch<ThemeService>();
@@ -320,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     primaryColor,
                   ),
                   _buildDivider(isDark),
-                  _buildNavRow('Privacy Policy', textColor),
+                  _buildNavRow('Privacy Policy', textColor, onTap: null),
                 ],
               ),
               const SizedBox(height: 24),
@@ -407,7 +468,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   _buildInfoRow('Version', '1.0.0', textColor, isDark),
                   _buildDivider(isDark),
-                  _buildNavRow('Send Feedback', textColor),
+                  _buildNavRow(
+                    'Send Feedback',
+                    textColor,
+                    onTap: () => _showFeedbackDialog(context, isDark),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),
@@ -486,22 +551,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildNavRow(String title, Color textColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 15,
+  Widget _buildNavRow(String title, Color textColor, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
+              ),
             ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
-        ],
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
       ),
     );
   }

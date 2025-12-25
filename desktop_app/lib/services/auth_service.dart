@@ -160,6 +160,30 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendFeedback(String message) async {
+    if (_accessToken == null) return false;
+    try {
+      final url = Uri.parse('$baseUrl/api/owners/feedback');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+        body: jsonEncode({'message': message}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Send Feedback error: $e');
+      return false;
+    }
+  }
+
   void logout() {
     _accessToken = null;
     _user = null;

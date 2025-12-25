@@ -290,3 +290,55 @@ def change_password():
     finally:
         cursor.close()
         release_db_connection(conn)
+
+@owners_bp.route('/feedback', methods=['POST'])
+def send_feedback():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Missing token'}), 401
+    token = auth_header.split(' ')[1]
+    
+    data = request.get_json()
+    message = data.get('message')
+    
+    if not message:
+        return jsonify({'error': 'Message required'}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Validate token
+        token_hash = hash_token(token)
+        cursor.execute("SELECT user_id FROM sessions WHERE token_hash = ? AND is_valid = 1", (token_hash,))
+        session = cursor.fetchone()
+        if not session:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+        owner_id = session[0]
+        
+        # Ensure table exists (minimal schema)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Insert feedback
+        feedback_id = str(uuid.uuid4())
+        cursor.execute(
+            "INSERT INTO feedback (id, user_id, message) VALUES (?, ?, ?)",
+            (feedback_id, owner_id, message)
+        )
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Feedback sent'})
+    except Exception as e:
+        conn.rollback()
+        print(f"Feedback Error: {e}")
+        return jsonify({'error': True, 'message': 'Failed to send feedback'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
