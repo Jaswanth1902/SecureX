@@ -124,11 +124,15 @@ class _MyHomePageState extends State<MyHomePage> {
       await _notificationService.checkForStatusUpdates(filesMap);
     } on AuthException catch (e) {
       if (kDebugMode) {
-        print(
-            'DEBUG (MyHomePage): Auth failure detected during periodic check: ${e.message}');
-        print('DEBUG (MyHomePage): Force redirecting to Login screen');
+        print('DEBUG (MyHomePage): Auth failure: ${e.message}');
       }
-      widget.onLogout();
+      // Only logout if it's a persistent issue or explicit 401
+      if (e.message.contains('expired') || e.message.contains('invalid')) {
+        widget.onLogout();
+      } else {
+        debugPrint(
+            'DEBUG (MyHomePage): Transient auth error, not logging out yet');
+      }
     } catch (e) {
       debugPrint('Error checking file statuses: $e');
     }

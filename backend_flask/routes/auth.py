@@ -78,6 +78,9 @@ def login():
     data = request.get_json()
     phone = data.get('phone')
     password = data.get('password')
+    
+    # DEBUG LOG
+    print(f"DEBUG (Auth): Login attempt for phone: '{phone}'")
 
     if not phone or not password:
         return jsonify({'error': 'phone and password required'}), 400

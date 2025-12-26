@@ -11,7 +11,7 @@ from auth_utils import check_password
 phone = "7013944675"
 password = "password123"
 
-conn = sqlite3.connect('database.db')
+conn = sqlite3.connect('database.sqlite')
 cursor = conn.cursor()
 
 try:

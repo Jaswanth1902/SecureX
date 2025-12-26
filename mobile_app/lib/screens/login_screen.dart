@@ -4,6 +4,7 @@
 // ========================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 
 import '../services/user_service.dart';
@@ -38,10 +39,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Phone and password are required';
-      });
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (phone.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter phone and password')),
+      );
       return;
     }
 
@@ -56,8 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Call POST /api/auth/login
       final response = await _apiService.loginUser(
-        phone: _phoneController.text,
-        password: _passwordController.text,
+        phone: phone,
+        password: password,
       );
 
       // Save tokens locally - CRITICAL: Must be awaited
@@ -68,11 +72,21 @@ class _LoginScreenState extends State<LoginScreen> {
         phone: response.user.phone,
       );
 
+      // VERIFICATION: Verify token was actually saved before continuing
+      final savedToken = await _userService.getAccessToken();
+      if (kDebugMode) {
+        print('DEBUG (Login): Token saved successfully: ${savedToken != null}');
+      }
+
+      // Small delay to ensure storage consistency on some platforms
+      await Future.delayed(const Duration(milliseconds: 500));
+
       // Reset guard AFTER successful save
       ApiService.isAuthInProgress = false;
 
       // Navigate to Dashboard using Navigator.pushReplacement
       if (mounted) {
+        debugPrint('DEBUG (Login): Navigating to dashboard');
         Navigator.of(context).pushReplacementNamed('/dashboard');
       }
     } catch (e) {

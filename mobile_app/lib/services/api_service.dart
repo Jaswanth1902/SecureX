@@ -15,7 +15,7 @@ class AuthException implements Exception {
 
 class ApiService {
   final String baseUrl =
-      'http://127.0.0.1:5000'; // Updated to localhost for Windows run
+      'http://127.0.0.1:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
   final UserService _userService = UserService();
 
   // Global callback for authentication failures
@@ -32,10 +32,24 @@ class ApiService {
   Future<Map<String, String>> _getHeaders({bool isJson = true}) async {
     final token = await _userService.getAccessToken();
 
+    if (kDebugMode) {
+      print('DEBUG (ApiService): _getHeaders() check:');
+      print(
+          '  - Token: ${token != null ? "PRESENT (${token.substring(0, 10)}...)" : "MISSING"}');
+      print('  - isAuthInProgress: $isAuthInProgress');
+    }
+
     if (token == null || token.isEmpty) {
       if (isAuthInProgress) {
-        // Skip auth enforcement during login/registration
+        if (kDebugMode) {
+          print(
+              'DEBUG (ApiService): Token missing but auth in progress. Returning empty headers.');
+        }
         return isJson ? {'Content-Type': 'application/json'} : {};
+      }
+      if (kDebugMode) {
+        print(
+            'DEBUG (ApiService): Token missing and NO auth in progress. THROWING AuthException.');
       }
       throw AuthException("Not authenticated");
     }
@@ -430,7 +444,7 @@ class FileItem {
       fileName: json['file_name'] ?? '',
       fileSizeBytes: json['file_size_bytes'] ?? 0,
       uploadedAt: json['uploaded_at'] ?? '',
-      isPrinted: json['is_printed'] ?? false,
+      isPrinted: json['is_printed'] == 1 || json['is_printed'] == true,
       printedAt: json['printed_at'],
       status: json['status'] ?? 'UNKNOWN',
       statusUpdatedAt: json['status_updated_at'] ?? '',
@@ -466,12 +480,12 @@ class PrintFileResponse {
 
   factory PrintFileResponse.fromJson(Map<String, dynamic> json) {
     return PrintFileResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       fileId: json['file_id'] ?? '',
       fileName: json['file_name'] ?? '',
       fileSizeBytes: json['file_size_bytes'] ?? 0,
       uploadedAt: json['uploaded_at'] ?? '',
-      isPrinted: json['is_printed'] ?? false,
+      isPrinted: json['is_printed'] == 1 || json['is_printed'] == true,
       encryptedFileData: json['encrypted_file_data'] ?? '',
       ivVector: json['iv_vector'] ?? '',
       authTag: json['auth_tag'] ?? '',
@@ -497,7 +511,7 @@ class DeleteResponse {
 
   factory DeleteResponse.fromJson(Map<String, dynamic> json) {
     return DeleteResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       fileId: json['file_id'] ?? '',
       status: json['status'] ?? '',
       deletedAt: json['deleted_at'] ?? '',
@@ -537,7 +551,7 @@ class LoginResponse {
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       accessToken: json['accessToken'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
@@ -560,7 +574,7 @@ class RegisterResponse {
 
   factory RegisterResponse.fromJson(Map<String, dynamic> json) {
     return RegisterResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       accessToken: json['accessToken'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
