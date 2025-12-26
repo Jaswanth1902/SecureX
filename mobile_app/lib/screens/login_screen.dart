@@ -5,24 +5,30 @@
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+
 import '../services/user_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  final Function(String accessToken, String userId) onLoginSuccess;
-
-  const LoginScreen({super.key, required this.onLoginSuccess});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
+  late final TextEditingController _phoneController;
+  late final TextEditingController _passwordController;
   final _apiService = ApiService();
   final _userService = UserService();
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -45,13 +51,16 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Set guard to prevent premature logout triggers
+      ApiService.isAuthInProgress = true;
+
       // Call POST /api/auth/login
       final response = await _apiService.loginUser(
         phone: _phoneController.text,
         password: _passwordController.text,
       );
 
-      // Save tokens locally
+      // Save tokens locally - CRITICAL: Must be awaited
       await _userService.saveTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
@@ -59,16 +68,25 @@ class _LoginScreenState extends State<LoginScreen> {
         phone: response.user.phone,
       );
 
-      // Notify parent widget of successful login
-      widget.onLoginSuccess(response.accessToken, response.user.id);
+      // Reset guard AFTER successful save
+      ApiService.isAuthInProgress = false;
+
+      // Navigate to Dashboard using Navigator.pushReplacement
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+      }
     } catch (e) {
+      // Reset guard on error as well
+      ApiService.isAuthInProgress = false;
       setState(() {
         _errorMessage = 'Login failed: ${e.toString()}';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -157,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Center(
               child: GestureDetector(
                 onTap: () {
-                  // Navigate to register screen (handled by parent)
+                  Navigator.of(context).pushNamed('/register');
                 },
                 child: Text(
                   'Don\'t have an account? Register here',

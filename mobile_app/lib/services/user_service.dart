@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 class UserService {
   static const _accessTokenKey = 'access_token';
@@ -33,6 +34,9 @@ class UserService {
         _storage.write(key: _phoneKey, value: phone),
       ]);
     } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG (UserService): Failed to save tokens: $e');
+      }
       throw Exception('Failed to save tokens: $e');
     }
   }

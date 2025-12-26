@@ -2,6 +2,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +22,20 @@ app = Flask(__name__)
 cors_origins = os.getenv('CORS_ORIGINS', '*').split(',')
 CORS(app, resources={r"/api/*": {"origins": cors_origins}})
 
+# Logging Setup
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s [%(pathname)s:%(lineno)d] %(message)s')
+log_file = 'logs/server_errors.log'
+
+file_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=5)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(logging.ERROR)
+
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.ERROR)
+
 # Error Handling
 @app.errorhandler(404)
 def not_found(error):
@@ -31,6 +47,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
+    app.logger.error(f"Server Error: {error}", exc_info=True)
     return jsonify({
         "error": True,
         "statusCode": 500,

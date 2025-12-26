@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:async';
 import 'screens/upload_screen.dart';
 import 'screens/file_list_screen.dart';
@@ -12,9 +11,7 @@ import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
 import 'widgets/notification_dropdown.dart';
-
-// Secure File Printing System - User Mobile App
-// Main entry point for the Flutter mobile application
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const SecurePrintUserApp());
@@ -27,123 +24,27 @@ class SecurePrintUserApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SecurePrint - User',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const AuthWrapper(),
+      home: const SplashScreen(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/dashboard': (context) => MyHomePage(
+              title: 'SecurePrint - Send Files Securely',
+              onLogout: () async {
+                await UserService().logout();
+                if (context.mounted) {
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/login', (route) => false);
+                }
+              },
+            ),
+      },
     );
-  }
-}
-
-// Authentication Wrapper - Shows login screen or main app
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  final UserService _userService = UserService();
-  bool _isLoading = true;
-  bool _isAuthenticated = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAuthentication();
-  }
-
-  Future<void> _checkAuthentication() async {
-    final isAuth = await _userService.isAuthenticated();
-    setState(() {
-      _isAuthenticated = isAuth;
-      _isLoading = false;
-    });
-  }
-
-  void _handleLoginSuccess(String accessToken, String userId) {
-    setState(() {
-      _isAuthenticated = true;
-    });
-  }
-
-  void _handleLogout() async {
-    await _userService.logout();
-    setState(() {
-      _isAuthenticated = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_isAuthenticated) {
-      return MyHomePage(
-        title: 'SecurePrint - Send Files Securely',
-        onLogout: _handleLogout,
-      );
-    }
-
-    return AuthScreen(onLoginSuccess: _handleLoginSuccess);
-  }
-}
-
-// Auth Screen - Login/Register switcher
-class AuthScreen extends StatefulWidget {
-  final Function(String accessToken, String userId) onLoginSuccess;
-
-  const AuthScreen({super.key, required this.onLoginSuccess});
-
-  @override
-  State<AuthScreen> createState() => _AuthScreenState();
-}
-
-class _AuthScreenState extends State<AuthScreen> {
-  bool _showLogin = true;
-
-  void _toggleScreen() {
-    setState(() {
-      _showLogin = !_showLogin;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_showLogin) {
-      return Scaffold(
-        body: LoginScreen(
-          onLoginSuccess: widget.onLoginSuccess,
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextButton(
-            onPressed: _toggleScreen,
-            child: const Text("Don't have an account? Register here"),
-          ),
-        ),
-      );
-    } else {
-      return Scaffold(
-        body: RegisterScreen(
-          onRegisterSuccess: widget.onLoginSuccess,
-          onHaveAccount: _toggleScreen,
-        ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextButton(
-            onPressed: _toggleScreen,
-            child: const Text("Already have an account? Login here"),
-          ),
-        ),
-      );
-    }
   }
 }
 
@@ -163,11 +64,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
-  
+
   // Notification service
   final NotificationService _notificationService = NotificationService();
   final ApiService _apiService = ApiService();
-  final UserService _userService = UserService();
   Timer? _statusCheckTimer;
 
   // Placeholder pages
@@ -204,32 +104,31 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _checkFileStatuses() async {
     try {
-      String? accessToken = await _userService.getAccessToken();
-      
-      if (accessToken == null) {
-        debugPrint('No access token - user not authenticated');
-        return;
-      }
-      
-      final response = await http.get(
-        Uri.parse('${_apiService.baseUrl}/api/files'),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final files = await _apiService.listFiles();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['files'] is List) {
-          final files = (data['files'] as List)
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList();
-          
-          await _notificationService.checkForStatusUpdates(files);
-        }
+      // Convert FileItem objects to Map for compatibility with NotificationService
+      final filesMap = files
+          .map((f) => {
+                'file_id': f.fileId,
+                'file_name': f.fileName,
+                'file_size_bytes': f.fileSizeBytes,
+                'uploaded_at': f.uploadedAt,
+                'is_printed': f.isPrinted,
+                'printed_at': f.printedAt,
+                'status': f.status,
+                'status_updated_at': f.statusUpdatedAt,
+                'rejection_reason': f.rejectionReason,
+              })
+          .toList();
+
+      await _notificationService.checkForStatusUpdates(filesMap);
+    } on AuthException catch (e) {
+      if (kDebugMode) {
+        print(
+            'DEBUG (MyHomePage): Auth failure detected during periodic check: ${e.message}');
+        print('DEBUG (MyHomePage): Force redirecting to Login screen');
       }
+      widget.onLogout();
     } catch (e) {
       debugPrint('Error checking file statuses: $e');
     }

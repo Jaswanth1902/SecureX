@@ -4,7 +4,7 @@ import 'package:path_provider/path_provider.dart';
 
 class ErrorLogger {
   static const String _logFileName = 'error_log.txt';
-  
+
   // Singleton instance
   static final ErrorLogger _instance = ErrorLogger._internal();
   factory ErrorLogger() => _instance;
@@ -27,8 +27,9 @@ class ErrorLogger {
   }) async {
     final timestamp = DateTime.now().toIso8601String();
     final platform = defaultTargetPlatform.toString();
-    
-    final logEntry = '''
+
+    final logEntry =
+        '''
 [$timestamp] [$platform] [$context]
 Message: $message
 Stack Trace: ${stackTrace?.toString() ?? 'None'}

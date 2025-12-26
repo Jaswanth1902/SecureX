@@ -8,14 +8,7 @@ import '../services/api_service.dart';
 import '../services/user_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final Function(String accessToken, String userId) onRegisterSuccess;
-  final Function()? onHaveAccount;
-
-  const RegisterScreen({
-    super.key,
-    required this.onRegisterSuccess,
-    this.onHaveAccount,
-  });
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -54,6 +47,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
+      // Set guard to prevent premature logout triggers
+      ApiService.isAuthInProgress = true;
+
       // Call POST /api/auth/register
       final response = await _apiService.registerUser(
         phone: _phoneController.text,
@@ -69,12 +65,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: response.user.phone,
       );
 
-      // Notify parent widget of successful registration
-      widget.onRegisterSuccess(response.accessToken, response.user.id);
+      // Reset guard AFTER successful save
+      ApiService.isAuthInProgress = false;
+
+      // Navigate to Dashboard using Navigator.pushReplacement
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+      }
     } catch (e) {
+      // Reset guard on error as well
+      ApiService.isAuthInProgress = false;
       setState(() {
-        _errorMessage = 'Registration failed. Please check your details and try again.';
-      });    } finally {
+        _errorMessage =
+            'Registration failed. Please check your details and try again.';
+      });
+    } finally {
       setState(() {
         _isLoading = false;
       });
@@ -185,7 +190,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Login Link
             Center(
               child: GestureDetector(
-                onTap: widget.onHaveAccount,
+                onTap: () {
+                  Navigator.of(context).pushNamed('/login');
+                },
                 child: Text(
                   'Already have an account? Login here',
                   style: TextStyle(color: Colors.blue.shade600),

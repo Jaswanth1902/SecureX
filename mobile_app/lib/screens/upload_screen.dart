@@ -8,12 +8,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:async';
 import '../services/encryption_service.dart';
 import '../services/api_service.dart';
-import '../services/user_service.dart';
 import '../services/file_history_service.dart';
 import '../services/permissions_service.dart';
 import '../services/connectivity_service.dart';
@@ -39,13 +36,12 @@ class _UploadScreenState extends State<UploadScreen> {
   String? uploadedFileId;
   Uint8List? selectedFileBytes;
   String? errorMessage;
-  
+
   // SECURITY FIX Bug #42: Cancellation support
   CancellationToken? _uploadCancellationToken;
 
-  // API configuration - Use ApiService's baseUrl which is configured for the device
+  // API configuration
   late final ApiService apiService = ApiService();
-  late final String apiBaseUrl = apiService.baseUrl;
 
   // ========================================
   // REQUEST PERMISSIONS
@@ -71,7 +67,7 @@ class _UploadScreenState extends State<UploadScreen> {
   Future<void> pickFile() async {
     try {
       debugPrint('🔍 Starting file picker...');
-      
+
       // Let file_picker handle permissions via SAF (Storage Access Framework)
       // This works on Android 6+ and is more reliable than manual permission requests
       final FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -80,17 +76,19 @@ class _UploadScreenState extends State<UploadScreen> {
         allowMultiple: false,
       );
 
-      debugPrint('📁 File picker result: ${result != null ? "Selected" : "Cancelled"}');
+      debugPrint(
+          '📁 File picker result: ${result != null ? "Selected" : "Cancelled"}');
 
       if (result != null && result.files.isNotEmpty) {
         final PlatformFile file = result.files.single;
         debugPrint('   File: ${file.name}');
         debugPrint('   Size: ${file.size} bytes');
         debugPrint('   Path: ${file.path}');
-        
+
         // Validate file extension (double-check even after picker filter)
         if (!_isAllowedExtension(file.name)) {
-          final errorMsg = 'File format is incompatible. Only PDF and DOCX files are allowed.';
+          final errorMsg =
+              'File format is incompatible. Only PDF and DOCX files are allowed.';
           setState(() {
             errorMessage = errorMsg;
             selectedFileBytes = null;
@@ -101,7 +99,7 @@ class _UploadScreenState extends State<UploadScreen> {
           if (mounted) _showErrorDialog(errorMsg);
           return;
         }
-        
+
         Uint8List? fileBytes = file.bytes;
 
         // On mobile, file.bytes might be null, so we need to read from path
@@ -110,7 +108,8 @@ class _UploadScreenState extends State<UploadScreen> {
             debugPrint('   Reading file from path (bytes were null)...');
             final ioFile = File(file.path!);
             fileBytes = await ioFile.readAsBytes();
-            debugPrint('   ✅ File read successfully: ${fileBytes.length} bytes');
+            debugPrint(
+                '   ✅ File read successfully: ${fileBytes.length} bytes');
           } catch (e) {
             debugPrint('❌ Error reading file from path: $e');
             fileBytes = null;
@@ -127,7 +126,8 @@ class _UploadScreenState extends State<UploadScreen> {
             uploadedFileId = null;
           });
 
-          debugPrint('✅ File ready for upload: $selectedFileName (${selectedFileSize ?? 0} bytes)');
+          debugPrint(
+              '✅ File ready for upload: $selectedFileName (${selectedFileSize ?? 0} bytes)');
         } else {
           final errorMsg = 'Could not read file data. Please try another file.';
           setState(() {
@@ -154,7 +154,6 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-
   // ========================================
   // ENCRYPT AND UPLOAD FILE
   // ========================================
@@ -162,7 +161,8 @@ class _UploadScreenState extends State<UploadScreen> {
   Future<void> encryptAndUploadFile() async {
     if (selectedFileBytes == null || selectedFileName == null) {
       const errorMsg = 'Please select a file first';
-      debugPrint('❌ $errorMsg - File: $selectedFileName, Bytes: ${selectedFileBytes?.length}');
+      debugPrint(
+          '❌ $errorMsg - File: $selectedFileName, Bytes: ${selectedFileBytes?.length}');
       if (mounted) _showErrorDialog(errorMsg);
       return;
     }
@@ -170,9 +170,10 @@ class _UploadScreenState extends State<UploadScreen> {
     try {
       // SECURITY FIX Bug #45: Check connectivity before starting
       if (!await ConnectivityService.hasConnectivity()) {
-        throw ConnectivityException('No internet connection. Please check your WiFi or mobile data.');
+        throw ConnectivityException(
+            'No internet connection. Please check your WiFi or mobile data.');
       }
-      
+
       setState(() {
         isEncrypting = true;
         uploadStatus = 'Encrypting file...';
@@ -200,9 +201,11 @@ class _UploadScreenState extends State<UploadScreen> {
       final encryptedBytes = encryptResult['encrypted'] as Uint8List;
       final iv = encryptResult['iv'] as Uint8List;
       final authTag = encryptResult['authTag'] as Uint8List;
-      
-      SecureLogger.logEncryptionOperation('File encrypted successfully', encryptedBytes.length);
-      SecureLogger.debug('IV: ${SecureLogger.sanitizeBytes(iv)}, AuthTag: ${SecureLogger.sanitizeBytes(authTag)}');
+
+      SecureLogger.logEncryptionOperation(
+          'File encrypted successfully', encryptedBytes.length);
+      SecureLogger.debug(
+          'IV: ${SecureLogger.sanitizeBytes(iv)}, AuthTag: ${SecureLogger.sanitizeBytes(authTag)}');
 
       setState(() {
         isEncrypting = false;
@@ -222,12 +225,11 @@ class _UploadScreenState extends State<UploadScreen> {
         });
         return; // User cancelled, abort silently
       }
-      
+
       debugPrint('📋 Upload details:');
       debugPrint('   Owner ID: $ownerId');
       debugPrint('   File name: $selectedFileName');
-      debugPrint('   Base URL: $apiBaseUrl');
-      
+
       // Step 3.1: Fetch Owner Public Key with timeout (Bug #42 fix)
       setState(() => uploadStatus = 'Fetching owner public key...');
       final publicKeyPem = await OperationTimeout.withTimeout(
@@ -235,15 +237,18 @@ class _UploadScreenState extends State<UploadScreen> {
         timeout: OperationTimeout.keyFetch,
         operationName: 'Public key fetch',
       );
-      SecureLogger.debug('✅ Owner Public Key fetched (${publicKeyPem.length} chars)');
-      
+      SecureLogger.debug(
+          '✅ Owner Public Key fetched (${publicKeyPem.length} chars)');
+
       // SECURITY FIX Bug #40: Verify public key using TOFU
       setState(() => uploadStatus = 'Verifying owner identity...');
-      final keyVerification = await PublicKeyTrustService.verifyKey(ownerId, publicKeyPem);
-      
+      final keyVerification =
+          await PublicKeyTrustService.verifyKey(ownerId, publicKeyPem);
+
       if (!keyVerification.isTrusted) {
         // Show verification dialog to user
-        final shouldTrust = await _showKeyVerificationDialog(keyVerification, ownerId);
+        final shouldTrust =
+            await _showKeyVerificationDialog(keyVerification, ownerId);
         if (shouldTrust != true) {
           setState(() {
             isEncrypting = false;
@@ -253,49 +258,75 @@ class _UploadScreenState extends State<UploadScreen> {
           return; // User declined to trust the key
         }
         // User accepted - store the trust
-        await PublicKeyTrustService.trustFingerprint(ownerId, keyVerification.fingerprint);
+        await PublicKeyTrustService.trustFingerprint(
+            ownerId, keyVerification.fingerprint);
         SecureLogger.info('Public key trusted for owner: $ownerId');
       }
 
       // Step 3.2: Encrypt AES Key with RSA (with timeout)
       setState(() => uploadStatus = 'Encrypting key...');
       final encryptedSymmetricKey = await OperationTimeout.withTimeout(
-        operation: () => encryptionService.encryptSymmetricKeyRSA(aesKey, publicKeyPem),
+        operation: () =>
+            encryptionService.encryptSymmetricKeyRSA(aesKey, publicKeyPem),
         timeout: OperationTimeout.apiCall,
         operationName: 'RSA encryption',
       );
-      SecureLogger.logEncryptionOperation('AES Key encrypted with RSA', encryptedSymmetricKey.length);
-      
+      SecureLogger.logEncryptionOperation(
+          'AES Key encrypted with RSA', encryptedSymmetricKey.length);
+
       // SECURITY FIX Bug #33: Immediately shred the AES key from memory
       // after RSA encryption to prevent key exposure
       encryptionService.shredData(aesKey);
       SecureLogger.info('🔒 AES Key securely wiped from memory');
-      
-      // Get real access token from UserService
-      final userService = UserService();
-      var accessToken = await userService.getAccessToken();
-      
-      if (accessToken == null) {
-        throw Exception('Not authenticated. Please log in first.');
-      }
-      
-      SecureLogger.logTokenUsage('Access token');
-      
+
       // Step 4: Upload encrypted file
       setState(() => uploadStatus = 'Uploading file to server...');
-      await uploadEncryptedFile(
+
+      final response = await apiService.uploadFile(
         encryptedData: encryptedBytes,
         ivVector: iv,
         authTag: authTag,
         encryptedSymmetricKey: encryptedSymmetricKey,
         fileName: selectedFileName!,
         fileMimeType: _getMimeType(selectedFileName!),
-        accessToken: accessToken,
         ownerId: ownerId,
       );
 
-      debugPrint('✅ Upload complete - file ID received and displayed to user');
-      
+      // Success! Update local history and UI
+      final fileHistoryService = FileHistoryService();
+      await fileHistoryService.saveFileToHistory(
+        fileId: response.fileId,
+        fileName: response.fileName,
+        fileSizeBytes: response.fileSizeBytes,
+        uploadedAt: response.uploadedAt,
+        status: response.status,
+      );
+
+      setState(() {
+        uploadedFileId = response.fileId;
+        uploadStatus = 'Upload successful! 🎉';
+        isUploading = false;
+        uploadProgress = 1.0;
+      });
+
+      debugPrint('✅ Upload complete - file ID: ${response.fileId}');
+
+      // Show success dialog
+      if (mounted) {
+        _showSuccessDialog(response.fileId, response.fileName);
+      }
+    } on AuthException catch (e) {
+      // MANDATORY: Handle authentication failures
+      final errorMsg =
+          'Authentication failed: ${e.message}. Please login again.';
+      SecureLogger.error('Auth error during upload', e);
+      setState(() {
+        isEncrypting = false;
+        isUploading = false;
+        uploadStatus = null;
+        errorMessage = errorMsg;
+      });
+      if (mounted) _showErrorDialog(errorMsg);
     } on TimeoutException catch (e) {
       // SECURITY FIX Bug #42: Handle timeout gracefully
       final errorMsg = e.toString();
@@ -307,7 +338,6 @@ class _UploadScreenState extends State<UploadScreen> {
         errorMessage = errorMsg;
       });
       if (mounted) _showErrorDialog(errorMsg);
-      
     } on ConnectivityException catch (e) {
       // SECURITY FIX Bug #45: Handle connectivity errors
       final errorMsg = e.toString();
@@ -319,7 +349,6 @@ class _UploadScreenState extends State<UploadScreen> {
         errorMessage = errorMsg;
       });
       if (mounted) _showErrorDialog(errorMsg);
-      
     } on OperationCancelledException catch (e) {
       // Handle user cancellation
       SecureLogger.info('Upload cancelled by user');
@@ -329,7 +358,6 @@ class _UploadScreenState extends State<UploadScreen> {
         uploadStatus = null;
         errorMessage = null;
       });
-      
     } catch (e) {
       final errorMsg = 'Error: $e';
       setState(() {
@@ -346,105 +374,13 @@ class _UploadScreenState extends State<UploadScreen> {
   // UPLOAD ENCRYPTED FILE TO SERVER
   // ========================================
 
-  Future<void> uploadEncryptedFile({
-    required Uint8List encryptedData,
-    required Uint8List ivVector,
-    required Uint8List authTag,
-    required String encryptedSymmetricKey,
-    required String fileName,
-    required String fileMimeType,
-    required String accessToken,
-    required String ownerId,
-  }) async {
-    try {
-      final uploadUri = Uri.parse('$apiBaseUrl/api/upload');
-
-      debugPrint('📤 Uploading to: $uploadUri');
-      debugPrint('   File: $fileName (${encryptedData.length} bytes)');
-
-      // Create multipart request
-      final request = http.MultipartRequest('POST', uploadUri);
-
-      // Add JWT authorization header
-      request.headers['Authorization'] = 'Bearer $accessToken';
-
-      // Add form fields
-      request.fields['file_name'] = fileName;
-      request.fields['iv_vector'] = base64Encode(ivVector);
-      request.fields['auth_tag'] = base64Encode(authTag);
-      request.fields['encrypted_symmetric_key'] = encryptedSymmetricKey;
-      request.fields['owner_id'] = ownerId;
-
-      // Add file
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          encryptedData,
-          filename: fileName,
-          contentType: http.MediaType.parse(fileMimeType),
-        ),
-      );
-
-      // Send request with progress tracking
-      final streamedResponse = await request.send();
-
-      // Handle response
-      final response = await http.Response.fromStream(streamedResponse);
-
-      debugPrint('📥 Response status: ${response.statusCode}');
-      debugPrint('📥 Response: ${response.body}');
-
-      if (response.statusCode == 201) {
-        // Success!
-        final jsonResponse = jsonDecode(response.body);
-        final fileId = jsonResponse['file_id'];
-
-        // Save to local history for rejection tracking
-        final fileHistoryService = FileHistoryService();
-        await fileHistoryService.saveFileToHistory(
-          fileId: fileId,
-          fileName: fileName,
-          fileSizeBytes: encryptedData.length,
-          uploadedAt: DateTime.now().toIso8601String(),
-          status: 'WAITING_FOR_APPROVAL',
-        );
-        debugPrint('📝 File saved to local history');
-
-        setState(() {
-          uploadedFileId = fileId;
-          uploadStatus = 'Upload successful! 🎉';
-          isUploading = false;
-          uploadProgress = 1.0;
-        });
-
-        debugPrint('✅ File ID: $fileId');
-
-        // Show success dialog
-        if (mounted) {
-          _showSuccessDialog(fileId, fileName);
-        }
-      } else {
-        throw Exception(
-          'Upload failed: ${response.statusCode} - ${response.body}',
-        );
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Upload failed: $e';
-        isUploading = false;
-      });
-      debugPrint('❌ Upload error: $e');
-      rethrow;
-    }
-  }
-
   // ========================================
   // PROMPT FOR OWNER ID
   // ========================================
 
   Future<String?> _promptForOwnerId() async {
     String? ownerId;
-    
+
     return showDialog<String>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -537,7 +473,8 @@ class _UploadScreenState extends State<UploadScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.description, color: Colors.blue.shade700, size: 20),
+                  Icon(Icons.description,
+                      color: Colors.blue.shade700, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -987,8 +924,9 @@ class _UploadScreenState extends State<UploadScreen> {
     KeyVerificationResult verification,
     String ownerId,
   ) async {
-    final isKeyChanged = verification.reason == KeyVerificationReason.keyChanged;
-    
+    final isKeyChanged =
+        verification.reason == KeyVerificationReason.keyChanged;
+
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -997,10 +935,16 @@ class _UploadScreenState extends State<UploadScreen> {
           title: Row(
             children: [
               Icon(isKeyChanged ? Icons.warning_amber : Icons.security,
-                color: isKeyChanged ? Colors.red : Colors.blue, size: 28),
+                  color: isKeyChanged ? Colors.red : Colors.blue, size: 28),
               const SizedBox(width: 12),
-              Expanded(child: Text(isKeyChanged ? 'Security Warning' : 'Verify Owner Identity',
-                style: TextStyle(color: isKeyChanged ? Colors.red : null, fontWeight: FontWeight.bold))),
+              Expanded(
+                  child: Text(
+                      isKeyChanged
+                          ? 'Security Warning'
+                          : 'Verify Owner Identity',
+                      style: TextStyle(
+                          color: isKeyChanged ? Colors.red : null,
+                          fontWeight: FontWeight.bold))),
             ],
           ),
           content: SingleChildScrollView(
@@ -1008,27 +952,45 @@ class _UploadScreenState extends State<UploadScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(verification.message, style: const TextStyle(fontSize: 15)),
+                Text(verification.message,
+                    style: const TextStyle(fontSize: 15)),
                 const SizedBox(height: 16),
-                Text('Owner ID:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                Text('Owner ID:',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(ownerId, style: const TextStyle(fontSize: 14, fontFamily: 'monospace')),
+                Text(ownerId,
+                    style:
+                        const TextStyle(fontSize: 14, fontFamily: 'monospace')),
                 const SizedBox(height: 12),
-                Text('Key Fingerprint:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                Text('Key Fingerprint:',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
-                  child: Text(verification.shortFingerprint, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                  decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4)),
+                  child: Text(verification.shortFingerprint,
+                      style: const TextStyle(
+                          fontSize: 11, fontFamily: 'monospace')),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: isKeyChanged ? Colors.orange : Colors.blue),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: isKeyChanged ? Colors.orange : Colors.blue),
               child: Text(isKeyChanged ? 'Trust Anyway' : 'Trust & Continue'),
             ),
           ],
