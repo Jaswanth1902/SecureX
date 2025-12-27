@@ -126,18 +126,20 @@ class _PrintScreenState extends State<PrintScreen> {
         });
 
         // Show success and navigate back
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Print job submitted'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Print job submitted'),
+              duration: Duration(seconds: 2),
+            ),
+          );
 
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        });
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              Navigator.pop(context);
+            }
+          });
+        }
       } else {
         try {
           final errorData = jsonDecode(response.body);
