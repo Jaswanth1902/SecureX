@@ -15,7 +15,7 @@ class AuthException implements Exception {
 
 class ApiService {
   final String baseUrl =
-      'http://127.0.0.1:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
+      'http://10.211.53.71:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
   final UserService _userService = UserService();
 
   // Global callback for authentication failures
