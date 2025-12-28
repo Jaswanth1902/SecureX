@@ -11,6 +11,7 @@ class UserService {
   static const _refreshTokenKey = 'refresh_token';
   static const _userIdKey = 'user_id';
   static const _phoneKey = 'user_phone';
+  static const _fullNameKey = 'full_name';
 
   final _storage = const FlutterSecureStorage();
 
@@ -24,6 +25,7 @@ class UserService {
     required String refreshToken,
     required String userId,
     required String phone,
+    required String fullName,
   }) async {
     try {
       await Future.wait([
@@ -31,6 +33,7 @@ class UserService {
         _storage.write(key: _refreshTokenKey, value: refreshToken),
         _storage.write(key: _userIdKey, value: userId),
         _storage.write(key: _phoneKey, value: phone),
+        _storage.write(key: _fullNameKey, value: fullName),
       ]);
     } catch (e) {
       throw Exception('Failed to save tokens: $e');
@@ -73,6 +76,15 @@ class UserService {
     }
   }
 
+  /// Get stored full name
+  Future<String?> getFullName() async {
+    try {
+      return await _storage.read(key: _fullNameKey);
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ========================================
   // AUTHENTICATION STATUS
   // ========================================
@@ -92,6 +104,7 @@ class UserService {
         _storage.delete(key: _refreshTokenKey),
         _storage.delete(key: _userIdKey),
         _storage.delete(key: _phoneKey),
+        _storage.delete(key: _fullNameKey),
       ]);
     } catch (e) {
       throw Exception('Failed to logout: $e');

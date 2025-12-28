@@ -67,6 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         refreshToken: response.refreshToken,
         userId: response.user.id,
         phone: response.user.phone,
+        fullName: response.user.fullName ?? '',
       );
 
       // Notify parent widget of successful registration
