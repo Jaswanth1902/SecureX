@@ -33,7 +33,10 @@ def register():
     try:
         cursor.execute("SELECT id FROM owners WHERE email = ?", (email,))
         if cursor.fetchone():
-            return jsonify({'error': 'Owner already exists'}), 409
+            return jsonify({
+                "success": False,
+                "message": "Account already exists. Please log in."
+            }), 409
 
         owner_id = str(uuid.uuid4())
         cursor.execute(
@@ -135,23 +138,12 @@ def login():
         release_db_connection(conn)
 
 @owners_bp.route('/profile', methods=['GET'])
+@token_required
 def get_profile():
-    # Helper to extract token from header
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Missing token'}), 401
-    token = auth_header.split(' ')[1]
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        token_hash = hash_token(token)
-        cursor.execute("SELECT user_id FROM sessions WHERE token_hash = ? AND is_valid = 1", (token_hash,))
-        session = cursor.fetchone()
-        if not session:
-            return jsonify({'error': 'Invalid or expired token'}), 401
-            
-        owner_id = session[0]
+        owner_id = g.user['sub']
         cursor.execute("SELECT email, full_name FROM owners WHERE id = ?", (owner_id,))
         owner = cursor.fetchone()
         
@@ -216,12 +208,8 @@ def get_me():
     return jsonify({'authenticated': False}), 401
 
 @owners_bp.route('/update-profile', methods=['POST'])
+@token_required
 def update_profile():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Missing token'}), 401
-    token = auth_header.split(' ')[1]
-    
     data = request.get_json()
     new_name = data.get('full_name')
     if not new_name:
@@ -230,13 +218,7 @@ def update_profile():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        token_hash = hash_token(token)
-        cursor.execute("SELECT user_id FROM sessions WHERE token_hash = ? AND is_valid = 1", (token_hash,))
-        session = cursor.fetchone()
-        if not session:
-            return jsonify({'error': 'Invalid token'}), 401
-            
-        owner_id = session[0]
+        owner_id = g.user['sub']
         cursor.execute("UPDATE owners SET full_name = ? WHERE id = ?", (new_name, owner_id))
         conn.commit()
         
@@ -245,6 +227,28 @@ def update_profile():
         conn.rollback()
         print(f"Update Profile Error: {e}")
         return jsonify({'error': True, 'message': 'Update failed'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+
+@owners_bp.route('/public-key', methods=['GET'])
+@token_required
+def get_my_public_key_simple():
+    """Return the currently logged in owner's public key (for mobile compatibility)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        owner_id = g.user['sub']
+        cursor.execute("SELECT public_key FROM owners WHERE id = ?", (owner_id,))
+        result = cursor.fetchone()
+        if not result or not result[0]:
+            return jsonify({'error': 'Public key not set'}), 404
+        
+        return jsonify({'success': True, 'publicKey': result[0]})
+        
+    except Exception as e:
+        print(f"Get My Public Key Error: {e}")
+        return jsonify({'error': True, 'message': 'Internal error'}), 500
     finally:
         cursor.close()
         release_db_connection(conn)
@@ -275,12 +279,8 @@ def get_public_key(identifier):
         release_db_connection(conn)
 
 @owners_bp.route('/change-password', methods=['POST'])
+@token_required
 def change_password():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Missing token'}), 401
-    token = auth_header.split(' ')[1]
-    
     data = request.get_json()
     current_password = data.get('current_password')
     new_password = data.get('new_password')
@@ -291,13 +291,7 @@ def change_password():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        token_hash = hash_token(token)
-        cursor.execute("SELECT user_id FROM sessions WHERE token_hash = ? AND is_valid = 1", (token_hash,))
-        session = cursor.fetchone()
-        if not session:
-            return jsonify({'error': 'Invalid token'}), 401
-            
-        owner_id = session[0]
+        owner_id = g.user['sub']
         
         # Verify current password
         cursor.execute("SELECT password_hash FROM owners WHERE id = ?", (owner_id,))

@@ -17,6 +17,23 @@ from routes.status import status_bp
 
 app = Flask(__name__)
 
+@app.route("/")
+def home():
+    return "SecureX backend running"
+
+# Fix Render / Flask proxy & upload connection issues
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,
+    x_proto=1,
+    x_host=1,
+    x_port=1
+)
+
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
+
 # CORS Configuration (Security Fix #3)
 # Default to '*' for dev compatibility, but allow override via env var
 cors_origins = os.getenv('CORS_ORIGINS', '*').split(',')
