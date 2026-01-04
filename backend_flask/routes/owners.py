@@ -12,6 +12,9 @@ from urllib.parse import urlencode
 
 owners_bp = Blueprint('owners', __name__)
 
+# Base URL for redirects (Google OAuth callback)
+BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://securex-1-0ajy.onrender.com")
+
 @owners_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -429,11 +432,12 @@ def _cleanup_oauth_sessions():
 
 @owners_bp.route('/google/login', methods=['GET'])
 def google_login():
+   print("🔥 BASE_URL USED FOR GOOGLE LOGIN =", BASE_URL)
     """Redirect user to Google OAuth consent page"""
     _cleanup_oauth_sessions()
     
     client_id = os.getenv('GOOGLE_CLIENT_ID')
-    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:5000/api/owners/google/callback')
+    redirect_uri = f"{BASE_URL}/api/owners/google/callback"
     
     if not client_id:
         return jsonify({'error': 'GOOGLE_CLIENT_ID not configured'}), 500
@@ -542,7 +546,7 @@ def google_callback():
     
     client_id = os.getenv('GOOGLE_CLIENT_ID')
     client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
-    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:5000/api/owners/google/callback')
+    redirect_uri = f"{BASE_URL}/api/owners/google/callback"
     
     if not client_id or not client_secret:
         return "Google OAuth not configured on server", 500
