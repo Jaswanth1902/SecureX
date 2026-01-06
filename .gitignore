@@ -34,6 +34,7 @@ lcov.info
 
 # Environment files
 backend/.env
+backend_flask/.env
 .env
 env/
 .venv/
