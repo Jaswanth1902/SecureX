@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class AuthService extends ChangeNotifier {
   // Use localhost for desktop dev
-  final String baseUrl = 'http://10.211.53.71:5000';
+  final String baseUrl = 'http://127.0.0.1:5000';
 
   String? _accessToken;
 

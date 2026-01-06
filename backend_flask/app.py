@@ -5,8 +5,24 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+import shutil
+
+# Auto-create .env from example if missing
+basedir = os.path.abspath(os.path.dirname(__file__))
+env_path = os.path.join(basedir, '.env')
+example_path = os.path.join(basedir, '.env.example')
+
+if not os.path.exists(env_path):
+    if os.path.exists(example_path):
+        print(f"Creating .env from {example_path}...")
+        shutil.copy(example_path, env_path)
+    else:
+        print("Warning: .env and .env.example not found. Creating empty .env")
+        with open(env_path, 'w') as f:
+            f.write("# Auto-generated .env\n")
+
 # Load environment variables
-load_dotenv()
+load_dotenv(env_path)
 
 # Import Blueprints
 from routes.auth import auth_bp
