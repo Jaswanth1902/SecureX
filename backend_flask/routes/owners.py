@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 owners_bp = Blueprint('owners', __name__)
 
 # Base URL for redirects (Google OAuth callback)
-BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://securex-1-0ajy.onrender.com")
+BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:5000")
 
 @owners_bp.route('/register', methods=['POST'])
 def register():
@@ -432,7 +432,7 @@ def _cleanup_oauth_sessions():
 
 @owners_bp.route('/google/login', methods=['GET'])
 def google_login():
-   print("🔥 BASE_URL USED FOR GOOGLE LOGIN =", BASE_URL)
+    print("🔥 BASE_URL USED FOR GOOGLE LOGIN =", BASE_URL)
     """Redirect user to Google OAuth consent page"""
     _cleanup_oauth_sessions()
     
