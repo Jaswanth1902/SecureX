@@ -76,13 +76,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Reset guard on error as well
       ApiService.isAuthInProgress = false;
       setState(() {
-        _errorMessage =
-            'Registration failed. Please check your details and try again.';
+        if (e.toString().toLowerCase().contains('already exists') ||
+            e.toString().toLowerCase().contains('already registered')) {
+          _errorMessage =
+              'This phone number is already registered. Please login.';
+        } else {
+          _errorMessage =
+              'Registration failed. Please check your details and try again.';
+        }
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

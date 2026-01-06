@@ -147,6 +147,42 @@ class ApiService {
   }
 
   // ========================================
+  // RESET PASSWORD
+  // ========================================
+
+  Future<bool> resetPassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/auth/reset-password');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
+      ));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        final json = jsonDecode(response.body);
+        throw ApiException(
+          json['message'] ?? 'Password reset failed: ${response.statusCode}',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Reset password error: $e', -1);
+    }
+  }
+
+  // ========================================
   // GET OWNER PUBLIC KEY
   // ========================================
 

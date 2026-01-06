@@ -24,7 +24,10 @@ def register():
         # Check if user exists
         cursor.execute("SELECT id FROM users WHERE phone = ?", (phone,))
         if cursor.fetchone():
-            return jsonify({'error': 'User already exists'}), 409
+            return jsonify({
+                "success": False,
+                "message": "Account already exists. Please log in."
+            }), 409
 
         # Generate UUID for user
         user_id = str(uuid.uuid4())

@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'screens/upload_screen.dart';
 import 'screens/file_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/encryption_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
 import 'widgets/notification_dropdown.dart';
-import 'screens/splash_screen.dart';
+import 'widgets/profile_info.dart';
+import 'widgets/reset_password_dialog.dart';
+import 'providers/theme_provider.dart';
+
+// Secure File Printing System - User Mobile App
+// Main entry point for the Flutter mobile application
 
 void main() {
-  runApp(const SecurePrintUserApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const SecurePrintUserApp(),
+    ),
+  );
 }
 
 class SecurePrintUserApp extends StatelessWidget {
@@ -22,12 +33,32 @@ class SecurePrintUserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'SecurePrint - User',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      themeMode: themeProvider.themeMode,
+      theme: themeProvider.isGradientMode
+          ? ThemeData(
+              primarySwatch: Colors.purple,
+              useMaterial3: true,
+              brightness: Brightness.light,
+              scaffoldBackgroundColor: Colors.transparent,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+              ),
+            )
+          : ThemeData(
+              primarySwatch: Colors.blue,
+              useMaterial3: true,
+              brightness: Brightness.light,
+            ),
+      darkTheme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        brightness: Brightness.dark,
       ),
       home: const SplashScreen(),
       routes: {
@@ -68,6 +99,8 @@ class _MyHomePageState extends State<MyHomePage> {
   // Notification service
   final NotificationService _notificationService = NotificationService();
   final ApiService _apiService = ApiService();
+  // ignore: unused_field
+  final UserService _userService = UserService();
   Timer? _statusCheckTimer;
 
   // Placeholder pages
@@ -102,6 +135,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _checkFileStatuses();
   }
 
+  // Backported logic: Use Local _apiService.listFiles() method
   Future<void> _checkFileStatuses() async {
     try {
       final files = await _apiService.listFiles();
@@ -150,7 +184,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    Widget scaffoldBody = Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         elevation: 0,
@@ -170,6 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: _pages.elementAt(_selectedIndex),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -190,31 +227,80 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ),
     );
+
+    if (themeProvider.isGradientMode) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667eea),
+              Color(0xFF764ba2),
+              Color(0xFFf093fb),
+              Color(0xFF4facfe),
+            ],
+            stops: [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: scaffoldBody,
+      );
+    }
+
+    return scaffoldBody;
   }
 }
 
 // Placeholder pages - To be implemented
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // ignore: unused_field
+  final UserService _userService = UserService();
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    // userService in local branch does not support getFullName, using fallback
+    setState(() {
+      _userName = "User";
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          Icon(Icons.security, size: 64, color: Colors.blue),
-          SizedBox(height: 16),
+          const Icon(Icons.security, size: 64, color: Colors.blue),
+          const SizedBox(height: 24),
           Text(
-            'Welcome to SecurePrint',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            _userName != null ? 'Hi $_userName' : 'Hi',
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 16),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
+            'Welcome to SecurePrint',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 16),
+          const Text(
             'Send files securely to your printer',
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
@@ -257,23 +343,62 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Icon(Icons.settings, size: 64, color: Colors.blue),
-          SizedBox(height: 16),
-          Text(
-            'Settings',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    // If UserService or ApiService is needed, instantiate here.
+    // ResetPasswordDialog uses its own internal instantiation.
+
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        const Text(
+          'Settings',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 24),
+        const ProfileInfo(),
+        const SizedBox(height: 24),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.brightness_6),
+          title: const Text('Theme'),
+          trailing: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: themeProvider.isGradientMode
+                  ? 'Gradient'
+                  : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  if (newValue == 'Gradient') {
+                    themeProvider.setTheme(AppTheme.gradient);
+                  } else {
+                    themeProvider.toggleTheme(newValue == 'Dark');
+                  }
+                }
+              },
+              items: <String>['Light', 'Dark', 'Gradient']
+                  .map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
           ),
-          SizedBox(height: 16),
-          Text(
-            'Settings coming soon',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.lock_reset),
+          title: const Text('Reset Password'),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => const ResetPasswordDialog(),
+            );
+          },
+        ),
+      ],
     );
   }
 }
