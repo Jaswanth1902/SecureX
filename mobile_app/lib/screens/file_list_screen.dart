@@ -9,7 +9,6 @@ import 'dart:convert';
 import '../services/user_service.dart';
 import '../services/api_service.dart';
 import '../services/file_history_service.dart';
-import 'print_screen.dart';
 
 // ========================================
 // FILE LIST SCREEN
@@ -135,25 +134,6 @@ class _FileListScreenState extends State<FileListScreen> {
       selectedFilter = filter;
       _applyFilter();
     });
-  }
-
-  void _openFile(String fileId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PrintScreen(fileId: fileId)),
-    );
-  }
-
-  /// Safely format file ID for display: truncate to 8 chars with ellipsis or show placeholder
-  String _formatFileId(dynamic fileId) {
-    if (fileId == null || fileId.toString().isEmpty) {
-      return 'No ID';
-    }
-    final idStr = fileId.toString();
-    if (idStr.length <= 8) {
-      return idStr;
-    }
-    return '${idStr.substring(0, 8)}...';
   }
 
   void _deleteFile(String fileId) async {

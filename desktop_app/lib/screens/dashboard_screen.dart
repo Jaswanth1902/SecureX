@@ -5,7 +5,6 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../models/file_item.dart';
 import 'login_screen.dart';
-import 'print_preview_screen.dart';
 import 'print_history_screen.dart';
 import 'settings_screen.dart';
 import '../services/theme_service.dart';
@@ -14,7 +13,6 @@ import '../widgets/glass_dialog.dart';
 import 'package:path/path.dart' as path;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:math';
 import 'package:printing/printing.dart';
 import '../services/key_service.dart';
 import '../services/encryption_service.dart';
@@ -206,14 +204,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       print('Error auto-rejecting ${file.fileName}: $e');
     }
-  }
-
-  void _handleLogout() {
-    context.read<NotificationService>().dispose();
-    context.read<AuthService>().logout();
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
   }
 
   Future<void> _handlePrintFlow(FileItem file) async {

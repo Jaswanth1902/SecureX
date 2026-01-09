@@ -21,7 +21,7 @@ class PermissionsService {
         // Get Android SDK version
         final plugin = DeviceInfoPlugin();
         final info = await plugin.androidInfo;
-        final sdkInt = info.version.sdkInt ?? 0;
+        final sdkInt = info.version.sdkInt;
 
         debugPrint('📱 Android SDK Version: $sdkInt');
 
@@ -123,7 +123,7 @@ class PermissionsService {
       if (Platform.isAndroid) {
         final plugin = DeviceInfoPlugin();
         final info = await plugin.androidInfo;
-        final sdkInt = info.version.sdkInt ?? 0;
+        final sdkInt = info.version.sdkInt;
 
         debugPrint('📱 Device Android SDK: $sdkInt');
 
@@ -210,7 +210,7 @@ class PermissionsService {
       if (Platform.isAndroid) {
         final plugin = DeviceInfoPlugin();
         final info = await plugin.androidInfo;
-        final sdkInt = info.version.sdkInt ?? 0;
+        final sdkInt = info.version.sdkInt;
 
         if (sdkInt >= 33) {
           // Android 13+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/theme_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/profile_card.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -77,8 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     // Colors based on Light (previous) and Dark (new spec)
     final primaryColor = isDark ? const Color(0xFF6A0DAD) : const Color(0xFF8A2BE2);
-    final bgGradientStart = isDark ? const Color(0xFF1E0A30) : const Color(0xFFF7F0FB);
-    final bgGradientEnd = isDark ? const Color(0xFF3A1A5B) : const Color(0xFFEFFFFF);
     
     final textColor = isDark ? const Color(0xFFE5E7EB) : const Color(0xFF333333);
     final labelColor = isDark ? const Color(0xFF9CA3AF) : Colors.grey.shade500;
@@ -132,6 +131,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             children: [
+              // PROFILE CARD WIDGET (Game-like Zomato style)
+              ProfileCard(
+                userName: userName,
+                userEmail: userEmail,
+                status: 'Active',
+                isDarkMode: isDark,
+              ),
+              const SizedBox(height: 24),
+              
               // GENERAL SECTION
               _buildSectionTitle('GENERAL', sectionTitleColor),
               _buildCard(
@@ -469,21 +477,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
      }
      
      // Light mode delete button
-     return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFDC2626), // red-600
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: const Color(0xFFDC2626).withOpacity(0.5),
-        disabledForegroundColor: Colors.white.withOpacity(0.8),
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        minimumSize: Size.zero, 
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: const Text('Delete', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-    );
+     return Opacity(
+       opacity: isDisabled ? 0.5 : 1.0,
+       child: Container(
+         decoration: BoxDecoration(
+           color: const Color(0xFFDC2626), // red-600
+           borderRadius: BorderRadius.circular(20),
+         ),
+         child: Material(
+           color: Colors.transparent,
+           child: InkWell(
+             onTap: onTap,
+             borderRadius: BorderRadius.circular(20),
+             child: const Padding(
+               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+               child: Text(
+                 'Delete',
+                 style: TextStyle(
+                   color: Colors.white,
+                   fontWeight: FontWeight.w600,
+                   fontSize: 13,
+                 ),
+               ),
+             ),
+           ),
+         ),
+       ),
+     );
   }
 
   Widget _buildLogoutButton(BuildContext context, bool isDark) {

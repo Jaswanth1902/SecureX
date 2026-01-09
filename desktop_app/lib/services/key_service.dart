@@ -11,8 +11,6 @@ import 'package:pointycastle/asn1/primitives/asn1_integer.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 
 class KeyService {
-  static const String _privateKeyFileName = 'owner_private_key.json';
-
   Future<pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey>?> getStoredKeyPair(String userEmail) async {
     try {
       final directory = await getApplicationDocumentsDirectory();

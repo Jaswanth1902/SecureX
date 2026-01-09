@@ -113,21 +113,13 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
     final colors = themeService.colors;
     final isDark = themeService.isDarkMode;
 
-    // Specific Colors from HTML/CSS
-    final bgLightStart = const Color(0xFFf7f0fb);
-    final bgLightEnd = const Color(0xFFefffff);
-    
     // Gradient for Buttons and Gradient Text
     final primaryGradient = const LinearGradient(
       colors: [Color(0xFF8A2BE2), Color(0xFFBA55D3)],
     );
 
     // Specific Colors - Dark Mode
-    final bgDarkStart = const Color(0xFF1e0a30);
-    final bgDarkEnd = const Color(0xFF3a1a5b);
-    final textGray100 = const Color(0xFFF3F4F6); // gray-100
     final textGray200 = const Color(0xFFE5E7EB); // gray-200
-    final textGray400 = const Color(0xFF9CA3AF); // gray-400
 
     return Scaffold(
       extendBodyBehindAppBar: true,
