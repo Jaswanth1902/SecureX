@@ -77,22 +77,6 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }
     }
-
-    if (response.statusCode == 200) {
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ File uploaded successfully")),
-        );
-      }
-    } else {
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ Upload failed: ${response.statusCode}")),
-        );
-      }
-    }
   }
 
   @override
