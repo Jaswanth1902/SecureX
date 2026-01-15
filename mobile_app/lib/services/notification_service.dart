@@ -55,7 +55,7 @@ class NotificationService extends ChangeNotifier {
   static const int _maxNotifications = 50;
   
   List<AppNotification> _notifications = [];
-  bool _isLoading = false;
+  final bool _isLoading = false;
   
   List<AppNotification> get notifications => _notifications;
   int get unreadCount => _notifications.where((n) => !n.isRead).length;

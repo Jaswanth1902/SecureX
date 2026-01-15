@@ -81,7 +81,7 @@ class SecureLogger {
   }
   
   static void logEncryptionOperation(String operation, int dataSize) {
-    debug('$operation completed for ${dataSize} bytes');
+    debug('$operation completed for $dataSize bytes');
   }
   
   static void logApiCall(String endpoint, {String? method}) {

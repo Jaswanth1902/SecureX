@@ -370,7 +370,7 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
       );
     }
 
-    String _formatDate(String dateStr) {
+    String formatDate(String dateStr) {
         try {
             final dt = DateTime.parse(dateStr);
             final now = DateTime.now();
@@ -437,7 +437,7 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
                     if (isDark) ...[
                         const SizedBox(height: 4),
                         Text(
-                            '${(item.fileSizeBytes / 1024).toStringAsFixed(1)} KB • ${_formatDate(item.uploadedAt)}',
+                            '${(item.fileSizeBytes / 1024).toStringAsFixed(1)} KB • ${formatDate(item.uploadedAt)}',
                             style: const TextStyle(
                                 color: Color(0xFF9CA3AF),
                                 fontSize: 13,

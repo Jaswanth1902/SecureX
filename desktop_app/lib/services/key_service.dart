@@ -139,7 +139,7 @@ class KeyService {
     
     String pem = '-----BEGIN RSA PUBLIC KEY-----\n';
     for (int i = 0; i < dataBase64.length; i += 64) {
-      pem += dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length) + '\n';
+      pem += '${dataBase64.substring(i, (i + 64 < dataBase64.length) ? i + 64 : dataBase64.length)}\n';
     }
     pem += '-----END RSA PUBLIC KEY-----';
     

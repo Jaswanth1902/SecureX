@@ -90,7 +90,7 @@ class _UploadScreenState extends State<UploadScreen> {
         
         // Validate file extension (double-check even after picker filter)
         if (!_isAllowedExtension(file.name)) {
-          final errorMsg = 'File format is incompatible. Only PDF and DOCX files are allowed.';
+          const errorMsg = 'File format is incompatible. Only PDF and DOCX files are allowed.';
           setState(() {
             errorMessage = errorMsg;
             selectedFileBytes = null;
@@ -129,7 +129,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
           debugPrint('✅ File ready for upload: $selectedFileName (${selectedFileSize ?? 0} bytes)');
         } else {
-          final errorMsg = 'Could not read file data. Please try another file.';
+          const errorMsg = 'Could not read file data. Please try another file.';
           setState(() {
             errorMessage = errorMsg;
             selectedFileBytes = null;
@@ -320,7 +320,7 @@ class _UploadScreenState extends State<UploadScreen> {
       });
       if (mounted) _showErrorDialog(errorMsg);
       
-    } on OperationCancelledException catch (e) {
+    } on OperationCancelledException {
       // Handle user cancellation
       SecureLogger.info('Upload cancelled by user');
       setState(() {
