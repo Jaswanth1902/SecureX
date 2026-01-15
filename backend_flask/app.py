@@ -30,6 +30,7 @@ from routes.owners import owners_bp
 from routes.files import files_bp
 from routes.events import events_bp
 from routes.status import status_bp
+from routes.feedback import feedback_bp
 
 app = Flask(__name__)
 
@@ -70,8 +71,27 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.ERROR)
 
 # Error Handling
+@app.errorhandler(400)
+def bad_request(error):
+    app.logger.error(f"Bad Request (400): {error}")
+    return jsonify({
+        "error": True,
+        "statusCode": 400,
+        "message": str(error.description if hasattr(error, 'description') else "Bad Request")
+    }), 400
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+    app.logger.error(f"Unauthorized (401): {error}")
+    return jsonify({
+        "error": True,
+        "statusCode": 401,
+        "message": "Authentication required or invalid"
+    }), 401
+
 @app.errorhandler(404)
 def not_found(error):
+    app.logger.error(f"Not Found (404): {error}")
     return jsonify({
         "error": True,
         "statusCode": 404,
@@ -100,11 +120,17 @@ app.register_blueprint(owners_bp, url_prefix='/api/owners')
 app.register_blueprint(files_bp, url_prefix='/api')
 app.register_blueprint(events_bp, url_prefix='/api/events')
 app.register_blueprint(status_bp, url_prefix='/api/status')
+app.register_blueprint(feedback_bp, url_prefix='/api')
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    print(f"Server running on http://0.0.0.0:{port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    import argparse
+    parser = argparse.ArgumentParser(description='Run SecureX Backend')
+    parser.add_argument('--host', type=str, default=os.getenv('HOST', '0.0.0.0'), help='Host to bind to')
+    parser.add_argument('--port', type=int, default=int(os.getenv('PORT', 5000)), help='Port to bind to')
+    args = parser.parse_args()
+
+    print(f"Server starting on http://{args.host}:{args.port}")
+    app.run(host=args.host, port=args.port, debug=False)
 
 
 # Flask CLI: add `flask server` command so the server can be started with that exact command

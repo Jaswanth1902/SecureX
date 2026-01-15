@@ -206,6 +206,44 @@ def list_files():
         cursor.close()
         release_db_connection(conn)
 
+@files_bp.route('/files/recent', methods=['GET'])
+@token_required
+def get_recent_files():
+    """Fetch the latest 5 files for the authenticated user (metadata only)"""
+    user_id = g.user['sub']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Fetch latest 5 files, ordered by most recent upload
+        query = """SELECT id, file_name, file_size_bytes, created_at
+                   FROM files 
+                   WHERE is_deleted = 0 AND user_id = ? 
+                   ORDER BY created_at DESC 
+                   LIMIT 5"""
+        cursor.execute(query, (user_id,))
+        
+        files = []
+        for row in cursor.fetchall():
+            files.append({
+                'id': row[0],
+                'name': row[1],
+                'size': row[2],
+                'uploaded_at': row[3]
+            })
+            
+        return jsonify({
+            'files': files
+        })
+        
+    except Exception as e:
+        print(f"Recent files error: {e}")
+        return jsonify({'error': True, 'message': 'Failed to fetch recent files'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+
 @files_bp.route('/print/<file_id>', methods=['GET'])
 @token_required
 def get_file_for_print(file_id):

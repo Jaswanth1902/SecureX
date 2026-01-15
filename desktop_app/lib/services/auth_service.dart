@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class AuthService extends ChangeNotifier {
-  // Use localhost for desktop dev
-  final String baseUrl = 'http://127.0.0.1:5000';
+  // Use LAN IP for desktop dev
+  final String baseUrl = 'http://10.85.144.137:5000';
 
   String? _accessToken;
 

@@ -71,3 +71,13 @@ CREATE INDEX IF NOT EXISTS idx_files_owner_id ON files(owner_id);
 CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_files_is_deleted ON files(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_files_status ON files(status);
+
+-- Feedback table
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    message TEXT NOT NULL,
+    rating INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

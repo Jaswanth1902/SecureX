@@ -8,7 +8,7 @@ import '../services/notification_service.dart';
 
 class NotificationDropdown extends StatefulWidget {
   final NotificationService notificationService;
-  
+
   const NotificationDropdown({
     super.key,
     required this.notificationService,
@@ -43,20 +43,23 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   void _toggleDropdown() {
     if (_isOpen) {
       _removeOverlay();
+      setState(() {});
     } else {
       _showOverlay();
     }
   }
 
   void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-    _isOpen = false;
-    if (mounted) setState(() {});
+    if (_overlayEntry != null) {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+      _isOpen = false;
+    }
   }
 
   void _showOverlay() {
-    final RenderBox? renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? renderBox =
+        _buttonKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     final Offset offset = renderBox.localToGlobal(Offset.zero);
@@ -68,7 +71,10 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
           // Tap outside to close
           Positioned.fill(
             child: GestureDetector(
-              onTap: _removeOverlay,
+              onTap: () {
+                _removeOverlay();
+                setState(() {});
+              },
               behavior: HitTestBehavior.opaque,
               child: Container(color: Colors.transparent),
             ),
@@ -89,7 +95,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
     Overlay.of(context).insert(_overlayEntry!);
     _isOpen = true;
-    
+
     // Mark all as read when opened
     widget.notificationService.markAllAsRead();
     setState(() {});
@@ -97,7 +103,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
   Widget _buildDropdownContent() {
     final notifications = widget.notificationService.notifications;
-    
+
     return Container(
       width: 320,
       constraints: const BoxConstraints(maxHeight: 400),
@@ -134,8 +140,10 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                     onPressed: () {
                       widget.notificationService.clearAllNotifications();
                       _removeOverlay();
+                      setState(() {});
                     },
-                    child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                    child:
+                        const Text('Clear All', style: TextStyle(fontSize: 12)),
                   ),
               ],
             ),
@@ -147,7 +155,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.notifications_none, size: 48, color: Colors.grey.shade400),
+                  Icon(Icons.notifications_none,
+                      size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 8),
                   Text(
                     'No notifications',
@@ -177,7 +186,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     final isRejected = notification.type == 'REJECTED';
     final color = isRejected ? Colors.red : Colors.green;
     final icon = isRejected ? Icons.cancel : Icons.check_circle;
-    
+
     return Dismissible(
       key: Key(notification.id),
       direction: DismissDirection.endToStart,
@@ -236,7 +245,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
               ),
             ],
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         ),
       ),
     );
@@ -245,7 +255,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inHours < 1) {
@@ -262,7 +272,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   @override
   Widget build(BuildContext context) {
     final unreadCount = widget.notificationService.unreadCount;
-    
+
     return Stack(
       clipBehavior: Clip.none,
       children: [

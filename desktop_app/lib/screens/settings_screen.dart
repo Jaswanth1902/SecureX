@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/theme_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -12,6 +13,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _feedbackController = TextEditingController();
+  bool _isSubmittingFeedback = false;
+
   @override
   void initState() {
     super.initState();
@@ -19,6 +23,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthService>().refreshProfile();
     });
+  }
+
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitFeedback(String accessToken) async {
+    final message = _feedbackController.text.trim();
+    if (message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your feedback')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmittingFeedback = true;
+    });
+
+    try {
+      final apiService = context.read<ApiService>();
+      final success = await apiService.submitFeedback(message, accessToken);
+      if (success && mounted) {
+        _feedbackController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you for your feedback')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingFeedback = false;
+        });
+      }
+    }
   }
 
   void _showEditNameDialog(
@@ -213,67 +260,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showFeedbackDialog(BuildContext context, bool isDark) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E0A30) : Colors.white,
-          title: Text(
-            'Send Feedback',
-            style: TextStyle(color: isDark ? Colors.white : Colors.black),
-          ),
-          content: TextField(
-            controller: controller,
-            style: TextStyle(color: isDark ? Colors.white : Colors.black),
-            decoration: InputDecoration(
-              hintText: 'Tell us what you think...',
-              hintStyle: TextStyle(
-                color: isDark ? Colors.grey : Colors.grey.shade400,
-              ),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(
-                  color: isDark ? Colors.purple : Colors.purple,
-                ),
-              ),
-            ),
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final message = controller.text.trim();
-                if (message.isNotEmpty) {
-                  final success = await context
-                      .read<AuthService>()
-                      .sendFeedback(message);
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          success
-                              ? 'Feedback sent!'
-                              : 'Failed to send feedback',
-                        ),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Send'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeService = context.watch<ThemeService>();
@@ -460,6 +446,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildLogoutButton(context, isDark),
               const SizedBox(height: 24),
 
+              // FEEDBACK SECTION
+              _buildSectionTitle('FEEDBACK', sectionTitleColor),
+              _buildCard(
+                cardColor,
+                border: cardBorder,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.05)
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.1)
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _feedbackController,
+                            maxLines: 6,
+                            minLines: 5,
+                            textAlignVertical: TextAlignVertical.top,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 14,
+                              height: 1.5,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Write your feedback here...',
+                              hintStyle: TextStyle(
+                                color: isDark
+                                    ? Colors.grey
+                                    : Colors.grey.shade400,
+                              ),
+                              contentPadding: const EdgeInsets.all(20),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: _buildGradientButton(
+                            _isSubmittingFeedback
+                                ? 'Sending...'
+                                : 'Send Feedback',
+                            primaryColor,
+                            onTap: _isSubmittingFeedback
+                                ? null
+                                : () => _submitFeedback(
+                                    authService.accessToken ?? '',
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
               // ABOUT SECTION
               _buildSectionTitle('ABOUT', sectionTitleColor),
               _buildCard(
@@ -468,11 +520,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   _buildInfoRow('Version', '1.0.0', textColor, isDark),
                   _buildDivider(isDark),
-                  _buildNavRow(
-                    'Send Feedback',
-                    textColor,
-                    onTap: () => _showFeedbackDialog(context, isDark),
-                  ),
+                  // Removed 'Send Feedback' NavRow as it's now an inline section
                 ],
               ),
               const SizedBox(height: 40),

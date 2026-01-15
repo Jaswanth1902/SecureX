@@ -28,6 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _registerConfirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _stopGooglePolling = false;
   String? _errorMessage;
 
   // Form Validity State
@@ -102,6 +104,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleToggle(bool toLogin) {
     _errorMessage = null; // Clear errors on toggle
+    _stopGooglePolling = true; // Cancel any active Google polling
+    _isGoogleLoading = false;
+
     _pageController.animateToPage(
       toLogin ? 0 : 1,
       duration: const Duration(milliseconds: 1000), // Glide duration (1 sec)
@@ -114,6 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _stopGooglePolling =
+          true; // If user starts manual login, stop Google polling
+      _isGoogleLoading = false;
     });
     try {
       final keyService = context.read<KeyService>();
@@ -154,6 +162,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _stopGooglePolling =
+          true; // If user starts manual register, stop Google polling
+      _isGoogleLoading = false;
     });
     try {
       // Validate
@@ -196,8 +207,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleLogin(bool isLogin) async {
+    if (_isGoogleLoading) return; // Prevent multiple clicks
+
     setState(() {
-      _isLoading = true;
+      _isGoogleLoading = true;
+      _stopGooglePolling = false;
       _errorMessage = null;
     });
 
@@ -237,14 +251,16 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       // Poll for auth completion every 1 second
-      const maxAttempts = 120; // 2 minutes max (polling every 1s)
+      const maxAttempts = 45; // 45 seconds max (polling every 1s)
       debugPrint('DEBUG: Starting polling for session: $session_id');
 
       for (var i = 0; i < maxAttempts; i++) {
         await Future.delayed(const Duration(seconds: 1));
 
-        if (!mounted) {
-          debugPrint('DEBUG: Polling stopped - widget not mounted');
+        if (!mounted || _stopGooglePolling) {
+          debugPrint(
+            'DEBUG: Polling stopped - mounted: $mounted, stopFlag: $_stopGooglePolling',
+          );
           return;
         }
 
@@ -335,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -681,13 +697,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: CustomPaint(painter: GoogleLogoPainter()),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      isLogin ? 'Continue with Google' : 'Sign up with Google',
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _isGoogleLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            isLogin
+                                ? 'Continue with Google'
+                                : 'Sign up with Google',
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                   ],
                 ),
               ),

@@ -15,6 +15,10 @@ owners_bp = Blueprint('owners', __name__)
 # Base URL for redirects (Google OAuth callback)
 BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:5000")
 
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+
 @owners_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -284,37 +288,76 @@ def get_public_key(identifier):
 @owners_bp.route('/change-password', methods=['POST'])
 @token_required
 def change_password():
-    data = request.get_json()
-    current_password = data.get('current_password')
-    new_password = data.get('new_password')
-    
-    if not current_password or not new_password:
-        return jsonify({'error': 'Current and new password required'}), 400
-        
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    print("\n--- DEBUG START: change_password ---")
     try:
-        owner_id = g.user['sub']
+        data = request.get_json(silent=True)
+        if not data:
+            print("ERROR: No JSON data")
+            return jsonify({'error': 'Invalid JSON'}), 400
+            
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
         
-        # Verify current password
-        cursor.execute("SELECT password_hash FROM owners WHERE id = ?", (owner_id,))
+        user_id = g.user.get('sub')
+        role = g.user.get('role', 'owner')
+        table = 'users' if role == 'user' else 'owners'
+        
+        print(f"DEBUG: User ID from JWT: {user_id}")
+        print(f"DEBUG: Role from JWT: {role}")
+        print(f"DEBUG: Initial target table: {table}")
+        print(f"DEBUG: Payload keys: {list(data.keys())}")
+
+        if not current_password or not new_password:
+            print("ERROR: Missing fields")
+            return jsonify({'error': 'Current and new password required'}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Search in primary table
+        print(f"DEBUG: Querying {table} for id={user_id}")
+        cursor.execute(f"SELECT password_hash FROM {table} WHERE id = ?", (user_id,))
         result = cursor.fetchone()
-        if not result or not check_password(current_password, result[0]):
+        
+        # 2. Diagnostics if not found
+        if not result:
+            print(f"WARNING: User {user_id} NOT found in {table} table.")
+            # Fallback search for debugging
+            other_table = 'owners' if table == 'users' else 'users'
+            print(f"DEBUG: Checking fallback table {other_table}...")
+            cursor.execute(f"SELECT password_hash FROM {other_table} WHERE id = ?", (user_id,))
+            fallback = cursor.fetchone()
+            if fallback:
+                print(f"CRITICAL: User found in WRONG table ({other_table})! Role mismatch.")
+                result = fallback
+                table = other_table
+            else:
+                print(f"ERROR: User {user_id} not found in EITHER table.")
+                return jsonify({'error': 'User record not found'}), 401
+
+        # 3. Verify Password
+        if not check_password(current_password, result[0]):
+            print(f"ERROR: Password comparison failed for {user_id} in {table}")
             return jsonify({'error': 'Invalid current password'}), 401
             
-        # Update with new password
+        # 4. Update
+        print(f"DEBUG: Updating password for {user_id} in {table}")
         new_hash = hash_password(new_password)
-        cursor.execute("UPDATE owners SET password_hash = ? WHERE id = ?", (new_hash, owner_id))
+        cursor.execute(f"UPDATE {table} SET password_hash = ? WHERE id = ?", (new_hash, user_id))
         conn.commit()
         
+        print("DEBUG: Password updated successfully.")
+        print("--- DEBUG END: change_password ---\n")
         return jsonify({'success': True, 'message': 'Password updated successfully'})
     except Exception as e:
-        conn.rollback()
-        print(f"Change Password Error: {e}")
-        return jsonify({'error': True, 'message': 'Update failed'}), 500
+        import traceback
+        print(f"CRITICAL ERROR in change_password: {e}")
+        print(traceback.format_exc())
+        return jsonify({'error': True, 'message': f'Internal error: {str(e)}'}), 500
     finally:
-        cursor.close()
-        release_db_connection(conn)
+        if 'conn' in locals():
+            cursor.close()
+            release_db_connection(conn)
 
 @owners_bp.route('/feedback', methods=['POST'])
 @token_required
@@ -436,10 +479,7 @@ def google_login():
     """Redirect user to Google OAuth consent page"""
     _cleanup_oauth_sessions()
     
-    client_id = os.getenv('GOOGLE_CLIENT_ID')
-    redirect_uri = f"{BASE_URL}/api/owners/google/callback"
-    
-    if not client_id:
+    if not GOOGLE_CLIENT_ID:
         return jsonify({'error': 'GOOGLE_CLIENT_ID not configured'}), 500
     
     # Get session ID from query param
@@ -465,8 +505,8 @@ def google_login():
     
     # Construct Google OAuth URL using urlencode for reliability
     params = {
-        'client_id': client_id,
-        'redirect_uri': redirect_uri,
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': f"{BASE_URL}/api/owners/google/callback",
         'response_type': 'code',
         'scope': 'openid email profile',
         'access_type': 'offline',
@@ -544,11 +584,7 @@ def google_callback():
         print(f"DEBUG: Session [{session_id}] not found in callback. Active: {list(oauth_sessions.keys())}")
         return "Session expired or invalid. Please try again from the app.", 400
     
-    client_id = os.getenv('GOOGLE_CLIENT_ID')
-    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
-    redirect_uri = f"{BASE_URL}/api/owners/google/callback"
-    
-    if not client_id or not client_secret:
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         return "Google OAuth not configured on server", 500
     
     try:
@@ -557,9 +593,9 @@ def google_callback():
             'https://oauth2.googleapis.com/token',
             data={
                 'code': code,
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'redirect_uri': redirect_uri,
+                'client_id': GOOGLE_CLIENT_ID,
+                'client_secret': GOOGLE_CLIENT_SECRET,
+                'redirect_uri': f"{BASE_URL}/api/owners/google/callback",
                 'grant_type': 'authorization_code'
             }
         )
@@ -662,8 +698,7 @@ def google_auth():
         token_info = response.json()
         
         # Verify Audience
-        client_id = os.getenv('GOOGLE_CLIENT_ID')
-        if token_info.get('aud') != client_id:
+        if token_info.get('aud') != GOOGLE_CLIENT_ID:
             return jsonify({'error': 'Invalid token audience'}), 401
             
         # Extract Email

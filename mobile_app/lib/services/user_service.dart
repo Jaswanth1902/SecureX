@@ -72,9 +72,6 @@ class UserService {
   Future<String?> getAccessToken() async {
     // Return cache if available for performance and race prevention
     if (_cachedAccessToken != null) {
-      if (kDebugMode) {
-        print('DEBUG (UserService): Returning CACHED access token');
-      }
       return _cachedAccessToken;
     }
 
@@ -82,11 +79,6 @@ class UserService {
       final storage = await _storage;
       final token = storage.getString(_accessTokenKey);
       _cachedAccessToken = token; // Populate cache
-
-      if (kDebugMode) {
-        print(
-            'DEBUG (UserService): Read access token from storage: ${token != null ? "FOUND (${token.substring(0, 10)}...)" : "MISSING"}');
-      }
       return token;
     } catch (e) {
       if (kDebugMode) {

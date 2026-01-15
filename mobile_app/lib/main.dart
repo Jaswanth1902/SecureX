@@ -114,6 +114,14 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    // Initialize redirection on auth failure
+    ApiService.onUnauthorized = () async {
+      await UserService().logout();
+      if (mounted) {
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    };
     _initializeNotifications();
   }
 
@@ -135,8 +143,13 @@ class _MyHomePageState extends State<MyHomePage> {
     _checkFileStatuses();
   }
 
+  bool _isCheckingStatus = false;
+
   // Backported logic: Use Local _apiService.listFiles() method
   Future<void> _checkFileStatuses() async {
+    if (_isCheckingStatus) return;
+    _isCheckingStatus = true;
+
     try {
       final files = await _apiService.listFiles();
 
@@ -169,6 +182,8 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       debugPrint('Error checking file statuses: $e');
+    } finally {
+      _isCheckingStatus = false;
     }
   }
 
@@ -176,10 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _selectedIndex = index;
     });
-    // Refresh notifications when switching to Jobs tab
-    if (index == 2) {
-      _checkFileStatuses();
-    }
+    // No explicit call needed here, screens handle their own loading
   }
 
   @override
@@ -267,7 +279,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // ignore: unused_field
   final UserService _userService = UserService();
+  final ApiService _apiService = ApiService();
   String? _userName;
+  List<FileItem> _recentFiles = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -280,14 +295,52 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _userName = "User";
     });
+    _fetchRecentFiles();
+  }
+
+  Future<void> _fetchRecentFiles() async {
+    try {
+      final files = await _apiService.getRecentFiles();
+      if (mounted) {
+        setState(() {
+          _recentFiles = files;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error fetching recent files: $e');
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  String _formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null) return 'Unknown';
+    try {
+      final dt = DateTime.parse(dateTimeStr).toLocal();
+      return '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return dateTimeStr;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
+          const SizedBox(height: 20),
           const Icon(Icons.security, size: 64, color: Colors.blue),
           const SizedBox(height: 24),
           Text(
@@ -304,6 +357,75 @@ class _HomePageState extends State<HomePage> {
             'Send files securely to your printer',
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
+          const SizedBox(height: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                const Text(
+                  'Recent Files',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    // Navigate to Jobs tab (index 2)
+                    final state =
+                        context.findAncestorStateOfType<_MyHomePageState>();
+                    state?._onItemTapped(2);
+                  },
+                  child: const Text('View All'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_isLoading)
+            const CircularProgressIndicator()
+          else if (_recentFiles.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                'No recent files yet',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _recentFiles.length,
+              itemBuilder: (context, index) {
+                final file = _recentFiles[index];
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue.withOpacity(0.1),
+                        child:
+                            const Icon(Icons.description, color: Colors.blue),
+                      ),
+                      title: Text(
+                        file.fileName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${_formatFileSize(file.fileSizeBytes)} • ${_formatDateTime(file.uploadedAt)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -338,15 +460,63 @@ class JobsPage extends StatelessWidget {
   }
 }
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  final TextEditingController _feedbackController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitFeedback() async {
+    final message = _feedbackController.text.trim();
+    if (message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your feedback')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final success = await _apiService.submitFeedback(message: message);
+      if (success && mounted) {
+        _feedbackController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you for your feedback')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
-    // If UserService or ApiService is needed, instantiate here.
-    // ResetPasswordDialog uses its own internal instantiation.
 
     return ListView(
       padding: const EdgeInsets.all(16.0),
@@ -398,6 +568,66 @@ class SettingsPage extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 32),
+        const Text(
+          'Feedback',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: themeProvider.isDarkMode
+                ? Colors.white.withOpacity(0.05)
+                : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: themeProvider.isDarkMode
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.grey[300]!,
+            ),
+          ),
+          child: TextField(
+            controller: _feedbackController,
+            maxLines: 6,
+            minLines: 5,
+            keyboardType: TextInputType.multiline,
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              hintText: 'Write your feedback here...',
+              contentPadding: EdgeInsets.all(20),
+              border: InputBorder.none,
+              hintStyle: TextStyle(color: Colors.grey),
+            ),
+            style: TextStyle(
+              color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: SizedBox(
+            width: 200,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _submitFeedback,
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send Feedback'),
+            ),
+          ),
+        ),
+        const SizedBox(height: 40),
       ],
     );
   }

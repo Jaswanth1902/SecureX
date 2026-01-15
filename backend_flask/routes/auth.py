@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from db import get_db_connection, release_db_connection
-from auth_utils import hash_password, check_password, generate_tokens, hash_token
+from auth_utils import hash_password, check_password, generate_tokens, hash_token, token_required
 import datetime
 import uuid
 
@@ -130,3 +130,39 @@ def login():
     finally:
         cursor.close()
         release_db_connection(conn)
+
+@auth_bp.route('/change-password', methods=['POST'])
+@token_required
+def change_password():
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current and new password required'}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        user_id = g.user['sub']
+        
+        # Verify current password
+        cursor.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,))
+        result = cursor.fetchone()
+        if not result or not check_password(current_password, result[0]):
+            return jsonify({'error': 'Invalid current password'}), 401
+            
+        # Update with new password
+        new_hash = hash_password(new_password)
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Password updated successfully'})
+    except Exception as e:
+        conn.rollback()
+        print(f"Change Password Error: {e}")
+        return jsonify({'error': True, 'message': 'Update failed'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+

@@ -15,7 +15,7 @@ class AuthException implements Exception {
 
 class ApiService {
   final String baseUrl =
-      'http://10.211.53.71:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
+      'http://10.85.144.137:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
   final UserService _userService = UserService();
 
   // Global callback for authentication failures
@@ -32,12 +32,14 @@ class ApiService {
   Future<Map<String, String>> _getHeaders({bool isJson = true}) async {
     final token = await _userService.getAccessToken();
 
+    /* 
     if (kDebugMode) {
       print('DEBUG (ApiService): _getHeaders() check:');
       print(
           '  - Token: ${token != null ? "PRESENT (${token.substring(0, 10)}...)" : "MISSING"}');
       print('  - isAuthInProgress: $isAuthInProgress');
     }
+    */
 
     if (token == null || token.isEmpty) {
       if (isAuthInProgress) {
@@ -68,7 +70,8 @@ class ApiService {
   /// Handle API responses and detect auth failures
   http.Response _handleResponse(http.Response response) {
     if (response.statusCode == 401 || response.statusCode == 403) {
-      // ARCHITECTURAL FIX: No automated navigation from service layer
+      // Trigger global redirection callback
+      onUnauthorized?.call();
       throw AuthException("Authentication expired or invalid");
     }
     return response;
@@ -155,14 +158,14 @@ class ApiService {
     required String newPassword,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/api/auth/reset-password');
+      final url = Uri.parse('$baseUrl/api/owners/change-password');
       final headers = await _getHeaders();
 
       final response = _handleResponse(await http.post(
         url,
         headers: headers,
         body: jsonEncode({
-          'old_password': oldPassword,
+          'current_password': oldPassword,
           'new_password': newPassword,
         }),
       ));
@@ -292,6 +295,82 @@ class ApiService {
     } catch (e) {
       if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('List files error: $e', -1);
+    }
+  }
+
+  // ========================================
+  // GET RECENT FILES
+  // ========================================
+
+  Future<List<FileItem>> getRecentFiles() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/files/recent');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.get(
+        url,
+        headers: headers,
+      ));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final files = (json['files'] as List)
+            .map((f) => FileItem.fromJson({
+                  'file_id': f['id'],
+                  'file_name': f['name'],
+                  'file_size_bytes': f['size'],
+                  'uploaded_at': f['uploaded_at'],
+                  'is_printed': 0,
+                  'status': 'UPLOADED',
+                  'status_updated_at': f['uploaded_at'],
+                }))
+            .toList();
+        return files;
+      } else {
+        throw ApiException(
+          'Failed to fetch recent files: ${response.statusCode}',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Recent files error: $e', -1);
+    }
+  }
+
+  // ========================================
+  // SUBMIT FEEDBACK
+  // ========================================
+
+  Future<bool> submitFeedback({
+    required String message,
+    int? rating,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feedback');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'message': message,
+          if (rating != null) 'rating': rating,
+        }),
+      ));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      } else {
+        final json = jsonDecode(response.body);
+        throw ApiException(
+          json['message'] ?? 'Feedback submission failed',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Feedback error: $e', -1);
     }
   }
 
