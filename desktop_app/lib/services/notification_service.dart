@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class NotificationService {
-  final String baseUrl = 'http://localhost:5000';
+  final String baseUrl = 'http://10.85.144.137:5000';
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
   http.Client? _client;
   bool _isConnected = false;
@@ -17,13 +17,16 @@ class NotificationService {
 
     try {
       _client = http.Client();
-      final request = http.Request('GET', Uri.parse('$baseUrl/api/events/stream'));
+      final request = http.Request(
+        'GET',
+        Uri.parse('$baseUrl/api/events/stream'),
+      );
       request.headers['Authorization'] = 'Bearer $accessToken';
       request.headers['Accept'] = 'text/event-stream';
 
       final response = await _client!.send(request);
       _isConnected = true;
-      
+
       if (kDebugMode) {
         print('Connected to notification stream');
       }
@@ -31,29 +34,31 @@ class NotificationService {
       // Buffer to handle partial chunks
       String buffer = '';
 
-      response.stream.transform(utf8.decoder).listen(
-        (data) {
-          buffer += data;
-          
-          // Process complete messages (ended with double newline)
-          while (buffer.contains('\n\n')) {
-            final index = buffer.indexOf('\n\n');
-            final message = buffer.substring(0, index);
-            buffer = buffer.substring(index + 2);
-            
-            _processMessage(message);
-          }
-        },
-        onError: (error) {
-          print('Stream error: $error');
-          _disconnect();
-        },
-        onDone: () {
-          print('Stream closed');
-          _disconnect();
-        },
-        cancelOnError: true,
-      );
+      response.stream
+          .transform(utf8.decoder)
+          .listen(
+            (data) {
+              buffer += data;
+
+              // Process complete messages (ended with double newline)
+              while (buffer.contains('\n\n')) {
+                final index = buffer.indexOf('\n\n');
+                final message = buffer.substring(0, index);
+                buffer = buffer.substring(index + 2);
+
+                _processMessage(message);
+              }
+            },
+            onError: (error) {
+              print('Stream error: $error');
+              _disconnect();
+            },
+            onDone: () {
+              print('Stream closed');
+              _disconnect();
+            },
+            cancelOnError: true,
+          );
     } catch (e) {
       print('Connection error: $e');
       _isConnected = false;
@@ -76,10 +81,7 @@ class NotificationService {
     if (event != null && data != null) {
       try {
         final jsonData = jsonDecode(data);
-        _controller.add({
-          'event': event,
-          'data': jsonData,
-        });
+        _controller.add({'event': event, 'data': jsonData});
         if (kDebugMode) {
           print('Received event: $event');
         }

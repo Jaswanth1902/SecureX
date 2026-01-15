@@ -45,7 +45,8 @@ class ThemeProvider with ChangeNotifier {
     if (_appTheme == AppTheme.gradient) {
       _themeMode = ThemeMode.light;
     } else {
-      _themeMode = _appTheme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
+      _themeMode =
+          _appTheme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
     }
     notifyListeners();
   }

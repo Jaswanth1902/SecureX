@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from db import get_db_connection, release_db_connection
-from auth_utils import hash_password, check_password, generate_tokens, hash_token
+from auth_utils import hash_password, check_password, generate_tokens, hash_token, token_required
 import datetime
 import uuid
 
@@ -24,7 +24,10 @@ def register():
         # Check if user exists
         cursor.execute("SELECT id FROM users WHERE phone = ?", (phone,))
         if cursor.fetchone():
-            return jsonify({'error': 'User already exists'}), 409
+            return jsonify({
+                "success": False,
+                "message": "Account already exists. Please log in."
+            }), 409
 
         # Generate UUID for user
         user_id = str(uuid.uuid4())
@@ -78,6 +81,9 @@ def login():
     data = request.get_json()
     phone = data.get('phone')
     password = data.get('password')
+    
+    # DEBUG LOG
+    print(f"DEBUG (Auth): Login attempt for phone: '{phone}'")
 
     if not phone or not password:
         return jsonify({'error': 'phone and password required'}), 400
@@ -125,53 +131,38 @@ def login():
         cursor.close()
         release_db_connection(conn)
 
-@auth_bp.route('/reset-password', methods=['POST'])
-def reset_password():
+@auth_bp.route('/change-password', methods=['POST'])
+@token_required
+def change_password():
     data = request.get_json()
-    phone = data.get('phone')
-    old_password = data.get('old_password')
+    current_password = data.get('current_password')
     new_password = data.get('new_password')
-
-    if not phone or not old_password or not new_password:
-        return jsonify({'error': 'phone, old_password, and new_password required'}), 400
-
+    
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current and new password required'}), 400
+        
     conn = get_db_connection()
     cursor = conn.cursor()
-
     try:
-        # Verify user and old password
-        cursor.execute("SELECT id, password_hash FROM users WHERE phone = ?", (phone,))
-        user = cursor.fetchone()
-
-        if not user or not check_password(old_password, user[1]):
-            return jsonify({'error': 'Invalid credentials'}), 401
-
-        user_id = user[0]
-        new_hashed_password = hash_password(new_password)
-
-        # Update password
-        cursor.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
-            (new_hashed_password, user_id)
-        )
-
-        # Invalidate all existing sessions for security
-        cursor.execute(
-            "UPDATE sessions SET is_valid = 0 WHERE user_id = ?",
-            (user_id,)
-        )
-
+        user_id = g.user['sub']
+        
+        # Verify current password
+        cursor.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,))
+        result = cursor.fetchone()
+        if not result or not check_password(current_password, result[0]):
+            return jsonify({'error': 'Invalid current password'}), 401
+            
+        # Update with new password
+        new_hash = hash_password(new_password)
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
         conn.commit()
-
-        return jsonify({
-            'success': True,
-            'message': 'Password updated successfully. Please login again.'
-        })
-
+        
+        return jsonify({'success': True, 'message': 'Password updated successfully'})
     except Exception as e:
         conn.rollback()
-        print(f"Reset password error: {e}")
-        return jsonify({'error': True, 'message': 'Password reset failed'}), 500
+        print(f"Change Password Error: {e}")
+        return jsonify({'error': True, 'message': 'Update failed'}), 500
     finally:
         cursor.close()
         release_db_connection(conn)
+

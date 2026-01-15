@@ -6,9 +6,12 @@ import '../models/file_item.dart';
 
 class ApiService {
   // Default fallback, but will try to load from config
-  String _baseUrl = 'http://localhost:5000';
-  
+  String _baseUrl = 'http://10.85.144.137:5000';
+
   String get baseUrl => _baseUrl;
+
+  // Static callback for auth failures
+  static void Function()? onUnauthorized;
 
   ApiService() {
     _loadConfig();
@@ -22,12 +25,12 @@ class ApiService {
         final dir = File(Platform.resolvedExecutable).parent;
         final configFile = File('${dir.path}/config.json');
         if (await configFile.exists()) {
-           final jsonStr = await configFile.readAsString();
-           final json = jsonDecode(jsonStr);
-           if (json['api_url'] != null) {
-             _baseUrl = json['api_url'];
-             debugPrint('Loaded API URL from config: $_baseUrl');
-           }
+          final jsonStr = await configFile.readAsString();
+          final json = jsonDecode(jsonStr);
+          if (json['api_url'] != null) {
+            _baseUrl = json['api_url'];
+            debugPrint('Loaded API URL from config: $_baseUrl');
+          }
         }
       }
     } catch (e) {
@@ -35,17 +38,26 @@ class ApiService {
     }
   }
 
+  /// Handle API responses and detect auth failures
+  http.Response _handleResponse(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      // Trigger global redirection callback
+      onUnauthorized?.call();
+      throw Exception("Authentication expired or invalid");
+    }
+    return response;
+  }
+
   Future<List<FileItem>> listFiles(String accessToken) async {
     try {
-      // Ensure config is loaded or wait? 
+      // Ensure config is loaded or wait?
       // For simplicity in this async method, we assume constructor starts it
       // But ideally we'd await initialization.
       // Let's reload or verify here if needed.
-       
+
       final url = Uri.parse('$_baseUrl/api/files');
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
+      final response = _handleResponse(
+        await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -62,12 +74,14 @@ class ApiService {
     }
   }
 
-  Future<PrintFileResponse> getFileForPrinting(String fileId, String accessToken) async {
+  Future<PrintFileResponse> getFileForPrinting(
+    String fileId,
+    String accessToken,
+  ) async {
     try {
       final url = Uri.parse('$_baseUrl/api/print/$fileId');
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
+      final response = _handleResponse(
+        await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -84,9 +98,8 @@ class ApiService {
   Future<bool> deleteFile(String fileId, String accessToken) async {
     try {
       final url = Uri.parse('$baseUrl/api/delete/$fileId');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
+      final response = _handleResponse(
+        await http.post(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -99,21 +112,28 @@ class ApiService {
     }
   }
 
-  Future<bool> updateFileStatus(String fileId, String status, String accessToken, {String? rejectionReason}) async {
+  Future<bool> updateFileStatus(
+    String fileId,
+    String status,
+    String accessToken, {
+    String? rejectionReason,
+  }) async {
     try {
       final url = Uri.parse('$baseUrl/api/status/update/$fileId');
       final body = {
         'status': status,
         if (rejectionReason != null) 'rejection_reason': rejectionReason,
       };
-      
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
+
+      final response = _handleResponse(
+        await http.post(
+          url,
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -129,9 +149,8 @@ class ApiService {
   Future<List<HistoryItem>> getHistory(String accessToken) async {
     try {
       final url = Uri.parse('$baseUrl/api/history');
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
+      final response = _handleResponse(
+        await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -151,9 +170,8 @@ class ApiService {
   Future<bool> clearHistory(String accessToken) async {
     try {
       final url = Uri.parse('$baseUrl/api/clear-history');
-      final response = await http.post(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
+      final response = _handleResponse(
+        await http.post(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
 
       if (response.statusCode == 200) {
@@ -163,6 +181,71 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Clear history error: $e');
+    }
+  }
+
+  Future<List<FileItem>> getRecentFiles(String accessToken) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/files/recent');
+      final response = _handleResponse(
+        await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final files = (json['files'] as List)
+            .map(
+              (f) => FileItem.fromJson({
+                'file_id': f['id'],
+                'file_name': f['name'],
+                'file_size_bytes': f['size'],
+                'uploaded_at': f['uploaded_at'],
+                'is_printed': false,
+                'status': 'UPLOADED',
+              }),
+            )
+            .toList();
+        return files;
+      } else {
+        throw Exception('Failed to fetch recent files: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Recent files error: $e');
+    }
+  }
+
+  // ========================================
+  // SUBMIT FEEDBACK
+  // ========================================
+
+  Future<bool> submitFeedback(
+    String message,
+    String accessToken, {
+    int? rating,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feedback');
+      final response = _handleResponse(
+        await http.post(
+          url,
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'message': message,
+            if (rating != null) 'rating': rating,
+          }),
+        ),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      } else {
+        throw Exception('Failed to submit feedback: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Submit feedback error: $e');
     }
   }
 }
@@ -204,7 +287,6 @@ class HistoryItem {
     );
   }
 }
-
 
 class PrintFileResponse {
   final String fileId;

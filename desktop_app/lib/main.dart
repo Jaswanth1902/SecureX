@@ -9,6 +9,9 @@ import 'services/notification_service.dart';
 import 'services/theme_service.dart';
 import 'screens/login_screen.dart';
 
+// Global key for navigation without context
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -20,12 +23,20 @@ void main() async {
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
   );
-  
+
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
     await windowManager.maximize();
   });
+
+  // Initialize redirection on auth failure
+  ApiService.onUnauthorized = () {
+    navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/login',
+      (route) => false,
+    );
+  };
 
   runApp(const SafeCopyDesktopApp());
 }
@@ -54,12 +65,11 @@ class SafeCopyDesktopApp extends StatelessWidget {
           useMaterial3: true,
           brightness: Brightness.light,
         ),
-        darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          useMaterial3: true,
-        ),
+        darkTheme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
         themeMode: ThemeMode.system,
+        navigatorKey: navigatorKey, // Set the global navigator key
         home: const LoginScreen(),
+        routes: {'/login': (context) => const LoginScreen()},
       ),
     );
   }

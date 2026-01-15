@@ -4,7 +4,8 @@
 // ========================================
 
 import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class UserService {
   static const _accessTokenKey = 'access_token';
@@ -13,7 +14,20 @@ class UserService {
   static const _phoneKey = 'user_phone';
   static const _fullNameKey = 'full_name';
 
-  final _storage = const FlutterSecureStorage();
+  // Singleton instance
+  static final UserService _instance = UserService._internal();
+  factory UserService() => _instance;
+  UserService._internal();
+
+  SharedPreferences? _prefs;
+
+  // IN-MEMORY CACHE for immediate retrieval after login
+  String? _cachedAccessToken;
+
+  Future<SharedPreferences> get _storage async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
 
   // ========================================
   // TOKEN STORAGE
@@ -28,23 +42,51 @@ class UserService {
     required String fullName,
   }) async {
     try {
+      _cachedAccessToken = accessToken; // Cache immediately
+
+      final storage = await _storage;
+      if (kDebugMode) {
+        print(
+            'DEBUG (UserService): Saving tokens for user $userId to SharedPreferences');
+      }
       await Future.wait([
-        _storage.write(key: _accessTokenKey, value: accessToken),
-        _storage.write(key: _refreshTokenKey, value: refreshToken),
-        _storage.write(key: _userIdKey, value: userId),
-        _storage.write(key: _phoneKey, value: phone),
-        _storage.write(key: _fullNameKey, value: fullName),
+        storage.setString(_accessTokenKey, accessToken),
+        storage.setString(_refreshTokenKey, refreshToken),
+        storage.setString(_userIdKey, userId),
+        storage.setString(_phoneKey, phone),
+        storage.setString(_fullNameKey, fullName),
       ]);
+
+      // Force immediate flush for Windows
+      await storage.reload();
+
+      if (kDebugMode) {
+        print('DEBUG (UserService): Tokens saved successfully. Cache updated.');
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG (UserService): Failed to save tokens: $e');
+      }
       throw Exception('Failed to save tokens: $e');
     }
   }
 
   /// Get stored access token
   Future<String?> getAccessToken() async {
+    // Return cache if available for performance and race prevention
+    if (_cachedAccessToken != null) {
+      return _cachedAccessToken;
+    }
+
     try {
-      return await _storage.read(key: _accessTokenKey);
+      final storage = await _storage;
+      final token = storage.getString(_accessTokenKey);
+      _cachedAccessToken = token; // Populate cache
+      return token;
     } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG (UserService): Error reading access token: $e');
+      }
       return null;
     }
   }
@@ -52,7 +94,8 @@ class UserService {
   /// Get stored refresh token
   Future<String?> getRefreshToken() async {
     try {
-      return await _storage.read(key: _refreshTokenKey);
+      final storage = await _storage;
+      return storage.getString(_refreshTokenKey);
     } catch (e) {
       return null;
     }
@@ -61,7 +104,8 @@ class UserService {
   /// Get stored user ID
   Future<String?> getUserId() async {
     try {
-      return await _storage.read(key: _userIdKey);
+      final storage = await _storage;
+      return storage.getString(_userIdKey);
     } catch (e) {
       return null;
     }
@@ -70,7 +114,8 @@ class UserService {
   /// Get stored phone
   Future<String?> getPhone() async {
     try {
-      return await _storage.read(key: _phoneKey);
+      final storage = await _storage;
+      return storage.getString(_phoneKey);
     } catch (e) {
       return null;
     }
@@ -79,7 +124,8 @@ class UserService {
   /// Get stored full name
   Future<String?> getFullName() async {
     try {
-      return await _storage.read(key: _fullNameKey);
+      final storage = await _storage;
+      return storage.getString(_fullNameKey);
     } catch (e) {
       return null;
     }
@@ -99,13 +145,19 @@ class UserService {
   /// Logout - clear all stored tokens
   Future<void> logout() async {
     try {
+      _cachedAccessToken = null; // Clear cache
+
+      final storage = await _storage;
       await Future.wait([
-        _storage.delete(key: _accessTokenKey),
-        _storage.delete(key: _refreshTokenKey),
-        _storage.delete(key: _userIdKey),
-        _storage.delete(key: _phoneKey),
-        _storage.delete(key: _fullNameKey),
+        storage.remove(_accessTokenKey),
+        storage.remove(_refreshTokenKey),
+        storage.remove(_userIdKey),
+        storage.remove(_phoneKey),
+        storage.remove(_fullNameKey),
       ]);
+      if (kDebugMode) {
+        print('DEBUG (UserService): Logged out, tokens cleared');
+      }
     } catch (e) {
       throw Exception('Failed to logout: $e');
     }

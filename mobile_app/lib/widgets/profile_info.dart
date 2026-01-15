@@ -23,10 +23,10 @@ class _ProfileInfoState extends State<ProfileInfo> {
   Future<void> _loadUserData() async {
     final fullName = await _userService.getFullName();
     final phone = await _userService.getPhone();
-    
+
     if (mounted) {
       setState(() {
-        _fullName = fullName;
+        _fullName = fullName ?? "Secure User";
         _phone = phone;
         _isLoading = false;
       });
@@ -53,7 +53,9 @@ class _ProfileInfoState extends State<ProfileInfo> {
               radius: 30,
               backgroundColor: Theme.of(context).colorScheme.primary,
               child: Text(
-                _fullName?.isNotEmpty == true ? _fullName![0].toUpperCase() : '?',
+                _fullName?.isNotEmpty == true
+                    ? _fullName![0].toUpperCase()
+                    : '?',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -86,7 +88,11 @@ class _ProfileInfoState extends State<ProfileInfo> {
                         _phone ?? '',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.color
+                              ?.withOpacity(0.7),
                         ),
                       ),
                     ],

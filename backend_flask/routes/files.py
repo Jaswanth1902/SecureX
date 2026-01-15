@@ -12,76 +12,87 @@ files_bp = Blueprint('files', __name__)
 @files_bp.route('/upload', methods=['POST'])
 @token_required  # Authentication enabled - use real user_id from JWT
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
-    file = request.files['file']
-    file_name = request.form.get('file_name')
-    iv_vector_b64 = request.form.get('iv_vector')
-    auth_tag_b64 = request.form.get('auth_tag')
-    encrypted_key_b64 = request.form.get('encrypted_symmetric_key')
-    owner_id = request.form.get('owner_id')
-
-    if not all([file_name, iv_vector_b64, auth_tag_b64, encrypted_key_b64, owner_id]):
-        return jsonify({'error': 'Missing required fields'}), 400
-
-    # Convert Base64 to Bytes for DB storage
+    temp_path = None
     try:
-        iv_vector = base64.b64decode(iv_vector_b64)
-        auth_tag = base64.b64decode(auth_tag_b64)
-        encrypted_key = base64.b64decode(encrypted_key_b64)
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 400
         
-        # Check file size (50MB limit)
-        file.seek(0, os.SEEK_END)
-        file_length = file.tell()
-        file.seek(0)
-        
-        if file_length > 50 * 1024 * 1024: # 50MB
-            return jsonify({'error': 'File too large (max 50MB)'}), 413
-            
-        file_data = file.read()
-        file_size = len(file_data)
-        file_mime = file.content_type or 'application/octet-stream'
-        
-        # Sanitize filename (basic)
-        import re
-        file_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file_name)
+        file = request.files['file']
+        file_name = request.form.get('file_name')
+        iv_vector_b64 = request.form.get('iv_vector')
+        auth_tag_b64 = request.form.get('auth_tag')
+        encrypted_key_b64 = request.form.get('encrypted_symmetric_key')
+        owner_id = request.form.get('owner_id')
 
-        # Validate file extension (Security Fix #22)
-        # Must match mobile app allowed list: pdf, doc, docx
+        if not all([file_name, iv_vector_b64, auth_tag_b64, encrypted_key_b64, owner_id]):
+            return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 400
+
+        # Validate file extension BEFORE processing
         allowed_extensions = {'pdf', 'doc', 'docx'}
         ext = file_name.rsplit('.', 1)[1].lower() if '.' in file_name else ''
         if ext not in allowed_extensions:
-            return jsonify({'error': 'Invalid file type. Only PDF and DOCX allowed.'}), 400
+            return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 400
+
+        # Sanitize filename
+        import re
+        file_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file_name)
+
+        # Streamed saving to temp file (Fix #2: Do NOT use file.read() directly on request)
+        import tempfile
+        fd, temp_path = tempfile.mkstemp()
+        os.close(fd)  # Close file descriptor, we just want the path
         
-    except Exception as e:
-        return jsonify({'error': f'Invalid encoding: {str(e)}'}), 400
+        file.save(temp_path)  # Streams from request to disk
 
-    file_id = str(uuid.uuid4())
-    user_id = g.user['sub']  # Use real user ID from JWT token
+        # Check file size (50MB limit)
+        file_size = os.path.getsize(temp_path)
+        if file_size > 50 * 1024 * 1024: # 50MB
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        # Read from local temp file for DB insertion
+        # We must load into memory for SQLite BLOB, but we used streamed save first
+        with open(temp_path, 'rb') as f:
+            file_data = f.read()
 
-    # Resolve Owner ID (Mobile app sends Email, we need UUID)
-    real_owner_id = owner_id
-    try:
-        cursor.execute("SELECT id FROM owners WHERE email = ?", (owner_id,))
-        row = cursor.fetchone()
-        if row:
-            real_owner_id = row[0]
-            print(f"Resolved owner email '{owner_id}' to UUID '{real_owner_id}'")
-        else:
-            # Check if it's already a UUID
-            cursor.execute("SELECT id FROM owners WHERE id = ?", (owner_id,))
-            if cursor.fetchone():
-                real_owner_id = owner_id
+        # Clean up temp file immediately
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            temp_path = None
+
+        # Convert Base64 to Bytes for DB storage
+        try:
+            iv_vector = base64.b64decode(iv_vector_b64)
+            auth_tag = base64.b64decode(auth_tag_b64)
+            encrypted_key = base64.b64decode(encrypted_key_b64)
+        except Exception:
+             return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 400
+
+        file_size = len(file_data)
+        file_mime = file.content_type or 'application/octet-stream'
+        
+        file_id = str(uuid.uuid4())
+        user_id = g.user['sub']  # Use real user ID from JWT token
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Resolve Owner ID (Mobile app sends Email, we need UUID)
+        real_owner_id = owner_id
+        try:
+            cursor.execute("SELECT id FROM owners WHERE email = ?", (owner_id,))
+            row = cursor.fetchone()
+            if row:
+                real_owner_id = row[0]
             else:
-                print(f"Warning: Owner '{owner_id}' not found in DB. Using as-is.")
-    except Exception as e:
-        print(f"Error resolving owner: {e}")
+                # Check if it's already a UUID
+                cursor.execute("SELECT id FROM owners WHERE id = ?", (owner_id,))
+                if cursor.fetchone():
+                    real_owner_id = owner_id
+        except Exception:
+            pass # Keep original owner_id if resolution fails
 
-    try:
         created_at = datetime.datetime.utcnow().isoformat()
         status_updated_at = created_at
         cursor.execute(
@@ -97,15 +108,16 @@ def upload_file():
         )
         conn.commit()
 
-        print(f"File uploaded: {file_id} ({file_size} bytes)")
-
         # Notify desktop client via SSE
-        sse_manager.publish(owner_id, "new_file", {
-            "file_id": file_id,
-            "file_name": file_name,
-            "file_size_bytes": file_size,
-            "uploaded_at": created_at
-        })
+        try:
+            sse_manager.publish(real_owner_id, "new_file", {
+                "file_id": file_id,
+                "file_name": file_name,
+                "file_size_bytes": file_size,
+                "uploaded_at": created_at
+            })
+        except Exception:
+            pass # Ignore SSE errors
 
         return jsonify({
             'success': True,
@@ -119,12 +131,15 @@ def upload_file():
         }), 201
 
     except Exception as e:
-        conn.rollback()
-        print(f"Upload error: {e}")
-        return jsonify({'error': True, 'message': 'Upload failed'}), 500
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+        # Fix #3: Return clean error responses, no stack traces
+        print(f"Generic upload error: {e}") # Log internally
+        return jsonify({'success': False, 'message': 'Upload failed. Please try again.'}), 500
     finally:
-        cursor.close()
-        release_db_connection(conn)
+        if 'conn' in locals():
+            cursor.close()
+            release_db_connection(conn)
 
 @files_bp.route('/files', methods=['GET'])
 @token_required
@@ -187,6 +202,44 @@ def list_files():
     except Exception as e:
         print(f"List files error: {e}")
         return jsonify({'error': True, 'message': 'Failed to list files'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+
+@files_bp.route('/files/recent', methods=['GET'])
+@token_required
+def get_recent_files():
+    """Fetch the latest 5 files for the authenticated user (metadata only)"""
+    user_id = g.user['sub']
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Fetch latest 5 files, ordered by most recent upload
+        query = """SELECT id, file_name, file_size_bytes, created_at
+                   FROM files 
+                   WHERE is_deleted = 0 AND user_id = ? 
+                   ORDER BY created_at DESC 
+                   LIMIT 5"""
+        cursor.execute(query, (user_id,))
+        
+        files = []
+        for row in cursor.fetchall():
+            files.append({
+                'id': row[0],
+                'name': row[1],
+                'size': row[2],
+                'uploaded_at': row[3]
+            })
+            
+        return jsonify({
+            'files': files
+        })
+        
+    except Exception as e:
+        print(f"Recent files error: {e}")
+        return jsonify({'error': True, 'message': 'Failed to fetch recent files'}), 500
     finally:
         cursor.close()
         release_db_connection(conn)

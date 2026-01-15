@@ -1,14 +1,81 @@
-// ========================================
-// API SERVICE - HTTP COMMUNICATION
-// Handles all backend API calls
-// ========================================
-
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:http_parser/http_parser.dart'; // Add for MediaType
+import 'user_service.dart';
+import 'package:flutter/foundation.dart';
+
+// Custom Exception for Authentication Failures
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+  @override
+  String toString() => message;
+}
 
 class ApiService {
-  final String baseUrl = 'http://192.168.211.34:5000'; // Updated to current WiFi IP
+  final String baseUrl =
+      'http://10.85.144.137:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
+  final UserService _userService = UserService();
+
+  // Global callback for authentication failures
+  static void Function()? onUnauthorized;
+
+  // Guard to prevent unauthorized triggers during login/registration
+  static bool isAuthInProgress = false;
+
+  // ========================================
+  // PRIVATE HELPERS
+  // ========================================
+
+  /// Get headers with mandatory Authorization token
+  Future<Map<String, String>> _getHeaders({bool isJson = true}) async {
+    final token = await _userService.getAccessToken();
+
+    /* 
+    if (kDebugMode) {
+      print('DEBUG (ApiService): _getHeaders() check:');
+      print(
+          '  - Token: ${token != null ? "PRESENT (${token.substring(0, 10)}...)" : "MISSING"}');
+      print('  - isAuthInProgress: $isAuthInProgress');
+    }
+    */
+
+    if (token == null || token.isEmpty) {
+      if (isAuthInProgress) {
+        if (kDebugMode) {
+          print(
+              'DEBUG (ApiService): Token missing but auth in progress. Returning empty headers.');
+        }
+        return isJson ? {'Content-Type': 'application/json'} : {};
+      }
+      if (kDebugMode) {
+        print(
+            'DEBUG (ApiService): Token missing and NO auth in progress. THROWING AuthException.');
+      }
+      throw AuthException("Not authenticated");
+    }
+
+    final headers = <String, String>{
+      'Authorization': 'Bearer $token',
+    };
+
+    if (isJson) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
+  }
+
+  /// Handle API responses and detect auth failures
+  http.Response _handleResponse(http.Response response) {
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      // Trigger global redirection callback
+      onUnauthorized?.call();
+      throw AuthException("Authentication expired or invalid");
+    }
+    return response;
+  }
 
   // ========================================
   // USER REGISTRATION
@@ -21,7 +88,7 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/auth/register');
-      final response = await http.post(
+      final response = _handleResponse(await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -29,7 +96,7 @@ class ApiService {
           'password': password,
           if (fullName != null) 'full_name': fullName,
         }),
-      );
+      ));
 
       if (response.statusCode == 201) {
         final json = jsonDecode(response.body);
@@ -57,14 +124,14 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/auth/login');
-      final response = await http.post(
+      final response = _handleResponse(await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'phone': phone,
           'password': password,
         }),
-      );
+      ));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -86,25 +153,25 @@ class ApiService {
   // RESET PASSWORD
   // ========================================
 
-  Future<void> resetPassword({
-    required String phone,
+  Future<bool> resetPassword({
     required String oldPassword,
     required String newPassword,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/api/auth/reset-password');
-      final response = await http.post(
+      final url = Uri.parse('$baseUrl/api/owners/change-password');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
-          'phone': phone,
-          'old_password': oldPassword,
+          'current_password': oldPassword,
           'new_password': newPassword,
         }),
-      );
+      ));
 
       if (response.statusCode == 200) {
-        return;
+        return true;
       } else {
         final json = jsonDecode(response.body);
         throw ApiException(
@@ -113,7 +180,7 @@ class ApiService {
         );
       }
     } catch (e) {
-      if (e is ApiException) rethrow;
+      if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('Reset password error: $e', -1);
     }
   }
@@ -124,9 +191,8 @@ class ApiService {
 
   Future<String> getOwnerPublicKey(String ownerId) async {
     try {
-      // Correct URL: /api/owners/public-key/:ownerId
       final url = Uri.parse('$baseUrl/api/owners/public-key/$ownerId');
-      final response = await http.get(url);
+      final response = _handleResponse(await http.get(url));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -153,16 +219,16 @@ class ApiService {
     required String encryptedSymmetricKey,
     required String fileName,
     required String fileMimeType,
-    required String accessToken,
     required String ownerId,
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/upload');
+      final headers = await _getHeaders(isJson: false);
 
       // Create multipart request
       final request = http.MultipartRequest('POST', url);
-      request.headers['Authorization'] = 'Bearer $accessToken';
+      request.headers.addAll(headers);
 
       // Add fields
       request.fields['file_name'] = fileName;
@@ -177,24 +243,26 @@ class ApiService {
           'file',
           encryptedData,
           filename: fileName,
-          contentType: http.MediaType.parse(fileMimeType),
+          contentType: MediaType.parse(fileMimeType),
         ),
       );
 
       // Send request
       final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final response =
+          _handleResponse(await http.Response.fromStream(streamedResponse));
 
       if (response.statusCode == 201) {
         final json = jsonDecode(response.body);
         return UploadResponse.fromJson(json);
       } else {
         throw ApiException(
-          'Upload failed: ${response.statusCode}',
+          'Upload failed: ${response.statusCode}. ${response.body}',
           response.statusCode,
         );
       }
     } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('Upload error: $e', -1);
     }
   }
@@ -203,19 +271,20 @@ class ApiService {
   // LIST FILES
   // ========================================
 
-  Future<List<FileItem>> listFiles({required String accessToken}) async {
+  Future<List<FileItem>> listFiles() async {
     try {
       final url = Uri.parse('$baseUrl/api/files');
-      final response = await http.get(
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.get(
         url,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+        headers: headers,
+      ));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        final files = (json['files'] as List)
-            .map((f) => FileItem.fromJson(f))
-            .toList();
+        final files =
+            (json['files'] as List).map((f) => FileItem.fromJson(f)).toList();
         return files;
       } else {
         throw ApiException(
@@ -224,7 +293,84 @@ class ApiService {
         );
       }
     } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('List files error: $e', -1);
+    }
+  }
+
+  // ========================================
+  // GET RECENT FILES
+  // ========================================
+
+  Future<List<FileItem>> getRecentFiles() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/files/recent');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.get(
+        url,
+        headers: headers,
+      ));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final files = (json['files'] as List)
+            .map((f) => FileItem.fromJson({
+                  'file_id': f['id'],
+                  'file_name': f['name'],
+                  'file_size_bytes': f['size'],
+                  'uploaded_at': f['uploaded_at'],
+                  'is_printed': 0,
+                  'status': 'UPLOADED',
+                  'status_updated_at': f['uploaded_at'],
+                }))
+            .toList();
+        return files;
+      } else {
+        throw ApiException(
+          'Failed to fetch recent files: ${response.statusCode}',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Recent files error: $e', -1);
+    }
+  }
+
+  // ========================================
+  // SUBMIT FEEDBACK
+  // ========================================
+
+  Future<bool> submitFeedback({
+    required String message,
+    int? rating,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feedback');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'message': message,
+          if (rating != null) 'rating': rating,
+        }),
+      ));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      } else {
+        final json = jsonDecode(response.body);
+        throw ApiException(
+          json['message'] ?? 'Feedback submission failed',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Feedback error: $e', -1);
     }
   }
 
@@ -232,20 +378,21 @@ class ApiService {
   // GET FILE FOR PRINTING
   // ========================================
 
-  Future<PrintFileResponse> getFileForPrinting({
+  Future<Map<String, dynamic>> getFileForPrinting({
     required String fileId,
-    required String accessToken,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/print/$fileId');
-      final response = await http.get(
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.get(
         url,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+        headers: headers,
+      ));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        return PrintFileResponse.fromJson(json);
+        return json['file'];
       } else {
         throw ApiException(
           'Failed to get file: ${response.statusCode}',
@@ -253,7 +400,48 @@ class ApiService {
         );
       }
     } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('Get file error: $e', -1);
+    }
+  }
+
+  // ========================================
+  // SUBMIT PRINT JOB
+  // ========================================
+
+  Future<bool> submitPrintJob({
+    required String fileId,
+    required int copies,
+    required bool color,
+    required String paperSize,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/print/$fileId');
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'file_id': fileId,
+          'copies': copies,
+          'color': color,
+          'paper_size': paperSize,
+        }),
+      ));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        final json = jsonDecode(response.body);
+        throw ApiException(
+          json['message'] ?? 'Print job failed: ${response.statusCode}',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
+      throw ApiException('Print job error: $e', -1);
     }
   }
 
@@ -263,14 +451,15 @@ class ApiService {
 
   Future<DeleteResponse> deleteFile({
     required String fileId,
-    required String accessToken,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/delete/$fileId');
-      final response = await http.post(
+      final headers = await _getHeaders();
+
+      final response = _handleResponse(await http.post(
         url,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+        headers: headers,
+      ));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -282,6 +471,7 @@ class ApiService {
         );
       }
     } catch (e) {
+      if (e is AuthException || e is ApiException) rethrow;
       throw ApiException('Delete file error: $e', -1);
     }
   }
@@ -369,7 +559,7 @@ class FileItem {
       fileName: json['file_name'] ?? '',
       fileSizeBytes: json['file_size_bytes'] ?? 0,
       uploadedAt: json['uploaded_at'] ?? '',
-      isPrinted: json['is_printed'] ?? false,
+      isPrinted: json['is_printed'] == 1 || json['is_printed'] == true,
       printedAt: json['printed_at'],
       status: json['status'] ?? 'UNKNOWN',
       statusUpdatedAt: json['status_updated_at'] ?? '',
@@ -405,12 +595,12 @@ class PrintFileResponse {
 
   factory PrintFileResponse.fromJson(Map<String, dynamic> json) {
     return PrintFileResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       fileId: json['file_id'] ?? '',
       fileName: json['file_name'] ?? '',
       fileSizeBytes: json['file_size_bytes'] ?? 0,
       uploadedAt: json['uploaded_at'] ?? '',
-      isPrinted: json['is_printed'] ?? false,
+      isPrinted: json['is_printed'] == 1 || json['is_printed'] == true,
       encryptedFileData: json['encrypted_file_data'] ?? '',
       ivVector: json['iv_vector'] ?? '',
       authTag: json['auth_tag'] ?? '',
@@ -436,7 +626,7 @@ class DeleteResponse {
 
   factory DeleteResponse.fromJson(Map<String, dynamic> json) {
     return DeleteResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       fileId: json['file_id'] ?? '',
       status: json['status'] ?? '',
       deletedAt: json['deleted_at'] ?? '',
@@ -476,7 +666,7 @@ class LoginResponse {
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       accessToken: json['accessToken'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
@@ -499,7 +689,7 @@ class RegisterResponse {
 
   factory RegisterResponse.fromJson(Map<String, dynamic> json) {
     return RegisterResponse(
-      success: json['success'] ?? false,
+      success: json['success'] == 1 || json['success'] == true,
       accessToken: json['accessToken'] ?? '',
       refreshToken: json['refreshToken'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
