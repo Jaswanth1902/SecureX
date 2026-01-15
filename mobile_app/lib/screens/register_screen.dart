@@ -4,11 +4,20 @@
 // ========================================
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/user_service.dart';
+import '../providers/theme_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final Function(String accessToken, String userId) onRegisterSuccess;
+  final Function()? onHaveAccount;
+
+  const RegisterScreen({
+    super.key,
+    required this.onRegisterSuccess,
+    this.onHaveAccount,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -47,9 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // Set guard to prevent premature logout triggers
-      ApiService.isAuthInProgress = true;
-
       // Call POST /api/auth/register
       final response = await _apiService.registerUser(
         phone: _phoneController.text,
@@ -66,38 +72,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: response.user.fullName ?? '',
       );
 
-      // Reset guard AFTER successful save
-      ApiService.isAuthInProgress = false;
-
-      // Navigate to Dashboard using Navigator.pushReplacement
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/dashboard');
-      }
+      // Notify parent widget of successful registration
+      widget.onRegisterSuccess(response.accessToken, response.user.id);
     } catch (e) {
-      // Reset guard on error as well
-      ApiService.isAuthInProgress = false;
       setState(() {
-        if (e.toString().toLowerCase().contains('already exists') ||
-            e.toString().toLowerCase().contains('already registered')) {
-          _errorMessage =
-              'This phone number is already registered. Please login.';
-        } else {
-          _errorMessage =
-              'Registration failed. Please check your details and try again.';
-        }
+        _errorMessage = 'Registration failed. Please check your details and try again.';
+      });    } finally {
+      setState(() {
+        _isLoading = false;
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    final content = Scaffold(
       appBar: AppBar(title: const Text('Create Account'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -199,9 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Login Link
             Center(
               child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushNamed('/login');
-                },
+                onTap: widget.onHaveAccount,
                 child: Text(
                   'Already have an account? Login here',
                   style: TextStyle(color: Colors.blue.shade600),
@@ -212,5 +201,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+
+    if (themeProvider.isGradientMode) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667eea),
+              Color(0xFF764ba2),
+              Color(0xFFf093fb),
+              Color(0xFF4facfe),
+            ],
+            stops: [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: content,
+      );
+    }
+
+    return content;
   }
 }

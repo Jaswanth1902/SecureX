@@ -4,31 +4,27 @@
 // ========================================
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/user_service.dart';
+import '../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final Function(String accessToken, String userId) onLoginSuccess;
+
+  const LoginScreen({super.key, required this.onLoginSuccess});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  late final TextEditingController _phoneController;
-  late final TextEditingController _passwordController;
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _apiService = ApiService();
   final _userService = UserService();
   bool _isLoading = false;
   String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _phoneController = TextEditingController();
-    _passwordController = TextEditingController();
-  }
 
   @override
   void dispose() {
@@ -38,13 +34,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (phone.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter phone and password')),
-      );
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        _errorMessage = 'Phone and password are required';
+      });
       return;
     }
 
@@ -54,16 +47,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Set guard to prevent premature logout triggers
-      ApiService.isAuthInProgress = true;
-
       // Call POST /api/auth/login
       final response = await _apiService.loginUser(
-        phone: phone,
-        password: password,
+        phone: _phoneController.text,
+        password: _passwordController.text,
       );
 
-      // Save tokens locally - CRITICAL: Must be awaited
+      // Save tokens locally
       await _userService.saveTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
@@ -72,41 +62,24 @@ class _LoginScreenState extends State<LoginScreen> {
         fullName: response.user.fullName ?? '',
       );
 
-      // VERIFICATION: Verify token was actually saved before continuing
-      final savedToken = await _userService.getAccessToken();
-      if (kDebugMode) {
-        print('DEBUG (Login): Token saved successfully: ${savedToken != null}');
-      }
-
-      // Small delay to ensure storage consistency on some platforms
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Reset guard AFTER successful save
-      ApiService.isAuthInProgress = false;
-
-      // Navigate to Dashboard using Navigator.pushReplacement
-      if (mounted) {
-        debugPrint('DEBUG (Login): Navigating to dashboard');
-        Navigator.of(context).pushReplacementNamed('/dashboard');
-      }
+      // Notify parent widget of successful login
+      widget.onLoginSuccess(response.accessToken, response.user.id);
     } catch (e) {
-      // Reset guard on error as well
-      ApiService.isAuthInProgress = false;
       setState(() {
         _errorMessage = 'Login failed: ${e.toString()}';
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    final content = Scaffold(
       appBar: AppBar(title: const Text('Login'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -189,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Center(
               child: GestureDetector(
                 onTap: () {
-                  Navigator.of(context).pushNamed('/register');
+                  // Navigate to register screen (handled by parent)
                 },
                 child: Text(
                   'Don\'t have an account? Register here',
@@ -201,5 +174,26 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+
+    if (themeProvider.isGradientMode) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667eea),
+              Color(0xFF764ba2),
+              Color(0xFFf093fb),
+              Color(0xFF4facfe),
+            ],
+            stops: [0.0, 0.3, 0.6, 1.0],
+          ),
+        ),
+        child: content,
+      );
+    }
+
+    return content;
   }
 }

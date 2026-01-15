@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:http_parser/http_parser.dart'; // Add for MediaType
 import 'user_service.dart';
 import 'package:flutter/foundation.dart';
@@ -14,8 +15,8 @@ class AuthException implements Exception {
 }
 
 class ApiService {
-  final String baseUrl =
-      'http://10.85.144.137:5000'; // Using 127.0.0.1 for maximum stability on Windows/Local
+  static const String _envApiUrl = String.fromEnvironment('API_URL');
+  final String baseUrl = _resolveBaseUrl();
   final UserService _userService = UserService();
 
   // Global callback for authentication failures
@@ -23,6 +24,15 @@ class ApiService {
 
   // Guard to prevent unauthorized triggers during login/registration
   static bool isAuthInProgress = false;
+
+  static String _resolveBaseUrl() {
+    if (_envApiUrl.isNotEmpty) return _envApiUrl;
+    if (kIsWeb) return 'http://localhost:5000';
+    if (Platform.isAndroid || Platform.isIOS) {
+      return 'http://127.0.0.1:5000';
+    }
+    return 'http://127.0.0.1:5000';
+  }
 
   // ========================================
   // PRIVATE HELPERS

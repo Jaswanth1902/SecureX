@@ -9,18 +9,15 @@ class ResetPasswordDialog extends StatefulWidget {
 }
 
 class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
-  final _phoneController = TextEditingController();
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  // ignore: unused_field
   final _apiService = ApiService();
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _phoneController.dispose();
     _oldPasswordController.dispose();
     _newPasswordController.dispose();
     super.dispose();
@@ -28,13 +25,6 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
 
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
-      if (_newPasswordController.text == _oldPasswordController.text) {
-        setState(() {
-          _errorMessage = 'New password must be different from old password';
-        });
-        return;
-      }
-
       setState(() {
         _isLoading = true;
         _errorMessage = null;
@@ -47,18 +37,18 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
         );
 
         if (mounted) {
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Password changed successfully'),
+              content: Text('Password updated successfully. Please login again.'),
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.of(context).pop();
         }
       } catch (e) {
         if (mounted) {
           setState(() {
-            _errorMessage = e.toString().replaceAll('Exception: ', '');
+            _errorMessage = e.toString();
           });
         }
       } finally {
@@ -88,7 +78,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Change Password',
+                      'Reset Password',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -96,8 +86,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed:
-                          _isLoading ? null : () => Navigator.of(context).pop(),
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -117,38 +106,18 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                       style: TextStyle(color: Colors.red.shade800),
                     ),
                   ),
-                // Phone field removed for logged-in user flow
-                /*
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  enabled: !_isLoading,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                */
                 TextFormField(
                   controller: _oldPasswordController,
                   obscureText: true,
                   enabled: !_isLoading,
                   decoration: const InputDecoration(
-                    labelText: 'Current Password',
+                    labelText: 'Old Password',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.lock_outline),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your current password';
+                      return 'Please enter your old password';
                     }
                     return null;
                   },
@@ -166,9 +135,6 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a new password';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
                     }
                     return null;
                   },
@@ -188,7 +154,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Change Password'),
+                      : const Text('Submit'),
                 ),
               ],
             ),

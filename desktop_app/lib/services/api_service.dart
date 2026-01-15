@@ -5,19 +5,30 @@ import 'package:http/http.dart' as http;
 import '../models/file_item.dart';
 
 class ApiService {
-  // Default fallback, but will try to load from config
-  String _baseUrl = 'http://10.85.144.137:5000';
+  String _baseUrl = const String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://127.0.0.1:5000',
+  );
+  bool _configLoaded = false;
 
   String get baseUrl => _baseUrl;
+
+  Future<String> getBaseUrl() async {
+    await _ensureConfigLoaded();
+    return _baseUrl;
+  }
 
   // Static callback for auth failures
   static void Function()? onUnauthorized;
 
   ApiService() {
-    _loadConfig();
+    _ensureConfigLoaded();
   }
 
-  Future<void> _loadConfig() async {
+  Future<void> _ensureConfigLoaded() async {
+    if (_configLoaded) return;
+    _configLoaded = true;
+
     try {
       // Look for config.json in the same folder as the exe (Windows)
       // This is a simple implementation for Desktop where we can drop a file
@@ -31,6 +42,16 @@ class ApiService {
             _baseUrl = json['api_url'];
             debugPrint('Loaded API URL from config: $_baseUrl');
           }
+        }
+      }
+      // Also support config.json in project working directory
+      final cwdConfig = File('${Directory.current.path}/config.json');
+      if (await cwdConfig.exists()) {
+        final jsonStr = await cwdConfig.readAsString();
+        final json = jsonDecode(jsonStr);
+        if (json['api_url'] != null) {
+          _baseUrl = json['api_url'];
+          debugPrint('Loaded API URL from cwd config: $_baseUrl');
         }
       }
     } catch (e) {
@@ -50,6 +71,7 @@ class ApiService {
 
   Future<List<FileItem>> listFiles(String accessToken) async {
     try {
+      await _ensureConfigLoaded();
       // Ensure config is loaded or wait?
       // For simplicity in this async method, we assume constructor starts it
       // But ideally we'd await initialization.
@@ -79,6 +101,7 @@ class ApiService {
     String accessToken,
   ) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$_baseUrl/api/print/$fileId');
       final response = _handleResponse(
         await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
@@ -97,7 +120,8 @@ class ApiService {
 
   Future<bool> deleteFile(String fileId, String accessToken) async {
     try {
-      final url = Uri.parse('$baseUrl/api/delete/$fileId');
+      await _ensureConfigLoaded();
+      final url = Uri.parse('$_baseUrl/api/delete/$fileId');
       final response = _handleResponse(
         await http.post(url, headers: {'Authorization': 'Bearer $accessToken'}),
       );
@@ -119,6 +143,7 @@ class ApiService {
     String? rejectionReason,
   }) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$baseUrl/api/status/update/$fileId');
       final body = {
         'status': status,
@@ -148,6 +173,7 @@ class ApiService {
 
   Future<List<HistoryItem>> getHistory(String accessToken) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$baseUrl/api/history');
       final response = _handleResponse(
         await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
@@ -169,6 +195,7 @@ class ApiService {
 
   Future<bool> clearHistory(String accessToken) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$baseUrl/api/clear-history');
       final response = _handleResponse(
         await http.post(url, headers: {'Authorization': 'Bearer $accessToken'}),
@@ -186,6 +213,7 @@ class ApiService {
 
   Future<List<FileItem>> getRecentFiles(String accessToken) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$baseUrl/api/files/recent');
       final response = _handleResponse(
         await http.get(url, headers: {'Authorization': 'Bearer $accessToken'}),
@@ -224,6 +252,7 @@ class ApiService {
     int? rating,
   }) async {
     try {
+      await _ensureConfigLoaded();
       final url = Uri.parse('$baseUrl/api/feedback');
       final response = _handleResponse(
         await http.post(

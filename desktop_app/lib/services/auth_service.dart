@@ -1,10 +1,47 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class AuthService extends ChangeNotifier {
-  // Use LAN IP for desktop dev
-  final String baseUrl = 'http://10.85.144.137:5000';
+  String _baseUrl = const String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://127.0.0.1:5000',
+  );
+  bool _configLoaded = false;
+
+  Future<String> _getBaseUrl() async {
+    if (_configLoaded) return _baseUrl;
+    _configLoaded = true;
+
+    try {
+      if (Platform.isWindows) {
+        final dir = File(Platform.resolvedExecutable).parent;
+        final configFile = File('${dir.path}/config.json');
+        if (await configFile.exists()) {
+          final jsonStr = await configFile.readAsString();
+          final json = jsonDecode(jsonStr);
+          if (json['api_url'] != null) {
+            _baseUrl = json['api_url'];
+            debugPrint('Loaded API URL from config: $_baseUrl');
+          }
+        }
+      }
+      final cwdConfig = File('${Directory.current.path}/config.json');
+      if (await cwdConfig.exists()) {
+        final jsonStr = await cwdConfig.readAsString();
+        final json = jsonDecode(jsonStr);
+        if (json['api_url'] != null) {
+          _baseUrl = json['api_url'];
+          debugPrint('Loaded API URL from cwd config: $_baseUrl');
+        }
+      }
+    } catch (e) {
+      debugPrint('Auth config load error: $e');
+    }
+
+    return _baseUrl;
+  }
 
   String? _accessToken;
 
@@ -21,6 +58,7 @@ class AuthService extends ChangeNotifier {
     String publicKey,
   ) async {
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/register');
       final response = await http.post(
         url,
@@ -51,6 +89,7 @@ class AuthService extends ChangeNotifier {
 
   Future<bool> login(String email, String password, String publicKey) async {
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/login');
       final response = await http.post(
         url,
@@ -81,6 +120,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> refreshProfile() async {
     if (_accessToken == null) return false;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/profile');
       final response = await http.get(
         url,
@@ -106,6 +146,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> updateName(String newName) async {
     if (_accessToken == null) return false;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/update-profile');
       final response = await http.post(
         url,
@@ -136,6 +177,7 @@ class AuthService extends ChangeNotifier {
   ) async {
     if (_accessToken == null) return false;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/change-password');
       final response = await http.post(
         url,
@@ -163,6 +205,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> sendFeedback(String message) async {
     if (_accessToken == null) return false;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/feedback');
       final response = await http.post(
         url,
@@ -186,6 +229,7 @@ class AuthService extends ChangeNotifier {
 
   Future<bool> googleLogin(String idToken) async {
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/google');
       final response = await http.post(
         url,
@@ -218,6 +262,7 @@ class AuthService extends ChangeNotifier {
   Future<Map<String, dynamic>?> getMyPublicKey() async {
     if (_accessToken == null) return null;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/me/public-key');
       final response = await http.get(
         url,
@@ -237,6 +282,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> syncPublicKey(String publicKey) async {
     if (_accessToken == null) return false;
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/sync-key');
       final response = await http.post(
         url,
@@ -268,6 +314,7 @@ class AuthService extends ChangeNotifier {
   /// Validate an access token and get user profile
   Future<Map<String, dynamic>?> validateToken(String token) async {
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse('$baseUrl/api/owners/profile');
       final response = await http.get(
         url,
@@ -290,6 +337,7 @@ class AuthService extends ChangeNotifier {
   /// Get Google OAuth status for a session
   Future<Map<String, dynamic>?> getGoogleAuthStatus(String sessionId) async {
     try {
+      final baseUrl = await _getBaseUrl();
       final url = Uri.parse(
         '$baseUrl/api/owners/google/status?session_id=$sessionId',
       );

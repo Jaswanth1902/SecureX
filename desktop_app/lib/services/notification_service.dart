@@ -1,10 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class NotificationService {
-  final String baseUrl = 'http://10.85.144.137:5000';
+  String _baseUrl = const String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://127.0.0.1:5000',
+  );
+  bool _configLoaded = false;
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
   http.Client? _client;
   bool _isConnected = false;
@@ -12,14 +17,46 @@ class NotificationService {
   Stream<Map<String, dynamic>> get events => _controller.stream;
   bool get isConnected => _isConnected;
 
+  Future<void> _ensureConfigLoaded() async {
+    if (_configLoaded) return;
+    _configLoaded = true;
+
+    try {
+      if (Platform.isWindows) {
+        final dir = File(Platform.resolvedExecutable).parent;
+        final configFile = File('${dir.path}/config.json');
+        if (await configFile.exists()) {
+          final jsonStr = await configFile.readAsString();
+          final json = jsonDecode(jsonStr);
+          if (json['api_url'] != null) {
+            _baseUrl = json['api_url'];
+            debugPrint('Loaded API URL from config: $_baseUrl');
+          }
+        }
+      }
+      final cwdConfig = File('${Directory.current.path}/config.json');
+      if (await cwdConfig.exists()) {
+        final jsonStr = await cwdConfig.readAsString();
+        final json = jsonDecode(jsonStr);
+        if (json['api_url'] != null) {
+          _baseUrl = json['api_url'];
+          debugPrint('Loaded API URL from cwd config: $_baseUrl');
+        }
+      }
+    } catch (e) {
+      debugPrint('Notification config load error: $e');
+    }
+  }
+
   Future<void> connect(String accessToken) async {
     if (_isConnected) return;
 
     try {
+      await _ensureConfigLoaded();
       _client = http.Client();
       final request = http.Request(
         'GET',
-        Uri.parse('$baseUrl/api/events/stream'),
+        Uri.parse('$_baseUrl/api/events/stream'),
       );
       request.headers['Authorization'] = 'Bearer $accessToken';
       request.headers['Accept'] = 'text/event-stream';

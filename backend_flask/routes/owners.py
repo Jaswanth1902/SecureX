@@ -14,6 +14,10 @@ owners_bp = Blueprint('owners', __name__)
 
 # Base URL for redirects (Google OAuth callback)
 BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:5000")
+GOOGLE_REDIRECT_URI = os.getenv(
+    "GOOGLE_REDIRECT_URI",
+    f"{BASE_URL}/api/owners/google/callback"
+)
 
 # Google OAuth Configuration
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -479,8 +483,8 @@ def google_login():
     """Redirect user to Google OAuth consent page"""
     _cleanup_oauth_sessions()
     
-    if not GOOGLE_CLIENT_ID:
-        return jsonify({'error': 'GOOGLE_CLIENT_ID not configured'}), 500
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return jsonify({'error': 'GOOGLE_CLIENT_ID/SECRET not configured'}), 500
     
     # Get session ID from query param
     session_id = request.args.get('session_id')
@@ -506,7 +510,7 @@ def google_login():
     # Construct Google OAuth URL using urlencode for reliability
     params = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': f"{BASE_URL}/api/owners/google/callback",
+        'redirect_uri': GOOGLE_REDIRECT_URI,
         'response_type': 'code',
         'scope': 'openid email profile',
         'access_type': 'offline',
@@ -548,6 +552,15 @@ def google_status():
         return jsonify(result)
     
     return jsonify({'status': 'pending'})
+
+
+@owners_bp.route('/google/config', methods=['GET'])
+def google_config():
+    """Expose whether Google OAuth is configured (no secrets)."""
+    return jsonify({
+        'configured': bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
+        'redirect_uri': GOOGLE_REDIRECT_URI
+    })
 
 
 @owners_bp.route('/google/callback', methods=['GET'])
@@ -595,7 +608,7 @@ def google_callback():
                 'code': code,
                 'client_id': GOOGLE_CLIENT_ID,
                 'client_secret': GOOGLE_CLIENT_SECRET,
-                'redirect_uri': f"{BASE_URL}/api/owners/google/callback",
+                'redirect_uri': GOOGLE_REDIRECT_URI,
                 'grant_type': 'authorization_code'
             }
         )

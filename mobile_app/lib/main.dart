@@ -6,13 +6,14 @@ import 'screens/upload_screen.dart';
 import 'screens/file_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/splash_screen.dart';
 import 'services/encryption_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
 import 'widgets/notification_dropdown.dart';
 import 'widgets/profile_info.dart';
+import 'widgets/profile_menu.dart';
+import 'widgets/profile_card.dart';
 import 'widgets/reset_password_dialog.dart';
 import 'providers/theme_provider.dart';
 
@@ -60,22 +61,122 @@ class SecurePrintUserApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      home: const SplashScreen(),
+      home: const AuthWrapper(),
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/dashboard': (context) => MyHomePage(
-              title: 'SecurePrint - Send Files Securely',
-              onLogout: () async {
-                await UserService().logout();
-                if (context.mounted) {
-                  Navigator.of(context)
-                      .pushNamedAndRemoveUntil('/login', (route) => false);
-                }
-              },
-            ),
+        '/upload': (context) => const UploadPage(),
       },
     );
+  }
+}
+
+// Authentication Wrapper - Shows login screen or main app
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final UserService _userService = UserService();
+  bool _isLoading = true;
+  bool _isAuthenticated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthentication();
+  }
+
+  Future<void> _checkAuthentication() async {
+    final isAuth = await _userService.isAuthenticated();
+    setState(() {
+      _isAuthenticated = isAuth;
+      _isLoading = false;
+    });
+  }
+
+  void _handleLoginSuccess(String accessToken, String userId) {
+    setState(() {
+      _isAuthenticated = true;
+    });
+  }
+
+  void _handleLogout() async {
+    await _userService.logout();
+    setState(() {
+      _isAuthenticated = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_isAuthenticated) {
+      return MyHomePage(
+        title: 'SecurePrint - Send Files Securely',
+        onLogout: _handleLogout,
+      );
+    }
+
+    return AuthScreen(onLoginSuccess: _handleLoginSuccess);
+  }
+}
+
+// Auth Screen - Login/Register switcher
+class AuthScreen extends StatefulWidget {
+  final Function(String accessToken, String userId) onLoginSuccess;
+
+  const AuthScreen({super.key, required this.onLoginSuccess});
+
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _showLogin = true;
+
+  void _toggleScreen() {
+    setState(() {
+      _showLogin = !_showLogin;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showLogin) {
+      return Scaffold(
+        body: LoginScreen(
+          onLoginSuccess: widget.onLoginSuccess,
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextButton(
+            onPressed: _toggleScreen,
+            child: const Text("Don't have an account? Register here"),
+          ),
+        ),
+      );
+    } else {
+      return Scaffold(
+        body: RegisterScreen(
+          onRegisterSuccess: widget.onLoginSuccess,
+          onHaveAccount: _toggleScreen,
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextButton(
+            onPressed: _toggleScreen,
+            child: const Text("Already have an account? Login here"),
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -116,10 +217,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     // Initialize redirection on auth failure
     ApiService.onUnauthorized = () async {
-      await UserService().logout();
       if (mounted) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/login', (route) => false);
+        widget.onLogout();
       }
     };
     _initializeNotifications();
@@ -205,6 +304,8 @@ class _MyHomePageState extends State<MyHomePage> {
         actions: [
           // Notification button
           NotificationDropdown(notificationService: _notificationService),
+          // Profile menu
+          ProfileMenu(onLogout: widget.onLogout),
           // Logout button
           IconButton(
             icon: const Icon(Icons.logout),
@@ -472,12 +573,43 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _feedbackController = TextEditingController();
   final ApiService _apiService = ApiService();
+  final UserService _userService = UserService();
   bool _isSubmitting = false;
+  String _userName = 'User';
+  String _userEmail = '';
 
   @override
   void dispose() {
     _feedbackController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final fullName = await _userService.getFullName();
+    final phone = await _userService.getPhone();
+
+    if (mounted) {
+      setState(() {
+        _userName = (fullName != null && fullName.trim().isNotEmpty)
+            ? fullName.trim()
+            : 'User';
+        _userEmail = (phone ?? '').trim();
+      });
+    }
+  }
+
+  Future<void> _logoutFromProfile() async {
+    await _userService.logout();
+    if (mounted) {
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/login', (route) => false);
+    }
   }
 
   Future<void> _submitFeedback() async {
@@ -528,6 +660,17 @@ class _SettingsPageState extends State<SettingsPage> {
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 24),
+        ProfileCard(
+          userName: _userName,
+          userEmail: _userEmail,
+          onLogout: _logoutFromProfile,
+          onEditProfile: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Edit profile coming soon')),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
         const ProfileInfo(),
         const SizedBox(height: 24),
         ListTile(

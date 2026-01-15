@@ -10,6 +10,7 @@ import 'settings_screen.dart';
 import '../services/theme_service.dart';
 import '../widgets/file_card.dart';
 import '../widgets/glass_dialog.dart';
+import '../widgets/page_transitions.dart';
 import 'package:path/path.dart' as path;
 import 'dart:convert';
 import 'dart:typed_data';
@@ -113,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (authService.accessToken == null) {
         print('DEBUG: No access token found. Redirecting to login.');
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          buildFadeSlideRoute(const LoginScreen()),
         );
         return;
       }
@@ -458,13 +459,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           _buildCircleActionButton(Icons.history, 'History', () {
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrintHistoryScreen()));
+            Navigator.of(context)
+                .push(buildFadeSlideRoute(const PrintHistoryScreen()));
           }, colors),
           _buildCircleActionButton(Icons.refresh, 'Refresh', () => _loadFiles(showLoading: true), colors),
           _buildCircleActionButton(Icons.settings, 'Settings', () {
-            Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()));
+            Navigator.of(context)
+                .push(buildFadeSlideRoute(const SettingsScreen()));
           }, colors),
           const SizedBox(width: 16),
         ],
