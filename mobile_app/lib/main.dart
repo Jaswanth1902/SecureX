@@ -98,10 +98,34 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   void _handleLogout() async {
-    await _userService.logout();
-    setState(() {
-      _isAuthenticated = false;
-    });
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _userService.logout();
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = false;
+        });
+      }
+    }
   }
 
   @override
@@ -199,6 +223,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Timer? _statusCheckTimer;
 
   // Placeholder pages
+  late PageController _pageController;
+
   final List<Widget> _pages = const <Widget>[
     HomePage(),
     UploadPage(),
@@ -209,13 +235,26 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     _initializeNotifications();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Ensure PageView is at the correct page after theme changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_selectedIndex);
+      }
+    });
   }
 
   @override
   void dispose() {
     _statusCheckTimer?.cancel();
     _notificationService.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -293,21 +332,14 @@ class _MyHomePageState extends State<MyHomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        transitionBuilder: (child, animation) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-            child: child,
-          );
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
         },
-        child: Center(
-          key: ValueKey<int>(_selectedIndex),
-          child: _pages.elementAt(_selectedIndex),
-        ),
+        children: _pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -332,7 +364,13 @@ class _MyHomePageState extends State<MyHomePage> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
+        onTap: (index) {
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        },
       ),
     );
 
@@ -449,21 +487,28 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey[300] : Colors.grey[600];
 
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        const Text(
+        Text(
           'Settings',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
         ),
         const SizedBox(height: 24),
         const ProfileInfo(),
         const SizedBox(height: 24),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.brightness_6),
-          title: const Text('Theme'),
+          leading: Icon(Icons.brightness_6, color: textColor),
+          title: Text('Theme', style: TextStyle(color: textColor)),
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: themeProvider.isGradientMode
@@ -482,7 +527,7 @@ class SettingsPage extends StatelessWidget {
                   .map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
-                  child: Text(value),
+                  child: Text(value, style: TextStyle(color: textColor)),
                 );
               }).toList(),
             ),
@@ -491,14 +536,67 @@ class SettingsPage extends StatelessWidget {
         const SizedBox(height: 16),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.lock_reset),
-          title: const Text('Reset Password'),
+          leading: Icon(Icons.lock_reset, color: textColor),
+          title: Text('Reset Password', style: TextStyle(color: textColor)),
           onTap: () {
             showDialog(
               context: context,
               builder: (context) => const ResetPasswordDialog(),
             );
           },
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.info_outline, color: textColor),
+          title: Text('About', style: TextStyle(color: textColor)),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => const AboutDialog(
+                applicationName: 'SecureX',
+                applicationVersion: '1.0.0',
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isDark
+                ? Colors.blue.withOpacity(0.2)
+                : Colors.blue.withOpacity(0.1),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.shield, color: Colors.blue, size: 24),
+                  SizedBox(width: 12),
+                  Text(
+                    'Security & Privacy',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '• Files are encrypted with AES-256-GCM encryption\n'
+                '• Your data is never stored in plain text\n'
+                '• Secure end-to-end communication over HTTPS\n'
+                '• Two-factor authentication support',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ],
     );

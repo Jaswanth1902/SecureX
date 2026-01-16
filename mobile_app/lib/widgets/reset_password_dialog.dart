@@ -16,6 +16,8 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
   final _apiService = ApiService();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _showOldPassword = false;
+  bool _showNewPassword = false;
 
   @override
   void dispose() {
@@ -128,12 +130,22 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _oldPasswordController,
-                  obscureText: true,
+                  obscureText: !_showOldPassword,
                   enabled: !_isLoading,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Old Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showOldPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showOldPassword = !_showOldPassword;
+                        });
+                      },
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -145,12 +157,22 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _newPasswordController,
-                  obscureText: true,
+                  obscureText: !_showNewPassword,
                   enabled: !_isLoading,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'New Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showNewPassword ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showNewPassword = !_showNewPassword;
+                        });
+                      },
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
