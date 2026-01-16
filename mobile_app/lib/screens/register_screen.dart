@@ -55,13 +55,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // Call POST /api/auth/register
+      print('📱 Starting registration with phone: ${_phoneController.text}');
       final response = await _apiService.registerUser(
         phone: _phoneController.text,
         password: _passwordController.text,
         fullName: _fullNameController.text,
       );
 
+      print('✅ Registration successful! Response: $response');
+      print('   AccessToken: ${response.accessToken.substring(0, 20)}...');
+      print('   UserId: ${response.user.id}');
+
       // Save tokens locally
+      print('💾 Saving tokens...');
       await _userService.saveTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
@@ -70,12 +76,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: response.user.fullName ?? '',
       );
 
+      print('✅ Tokens saved successfully!');
+
       // Notify parent widget of successful registration
+      print('🚀 Navigating to home...');
       widget.onRegisterSuccess(response.accessToken, response.user.id);
     } catch (e) {
+      print('❌ REGISTRATION ERROR ❌');
+      print('   Error Type: ${e.runtimeType}');
+      print('   Error Message: $e');
+      print('   Stack Trace: ${StackTrace.current}');
       setState(() {
-        _errorMessage = 'Registration failed. Please check your details and try again.';
-      });    } finally {
+        _errorMessage = 'Error: ${e.toString()}';
+      });
+    } finally {
       setState(() {
         _isLoading = false;
       });

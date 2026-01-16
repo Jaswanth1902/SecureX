@@ -672,10 +672,10 @@ class _UploadScreenState extends State<UploadScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.security, size: 48, color: Colors.blue.shade600),
+                    Icon(Icons.folder_open, size: 48, color: Colors.blue.shade600),
                     const SizedBox(height: 12),
                     const Text(
-                      'Secure File Upload',
+                      '📂 Browse Your File',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -683,7 +683,7 @@ class _UploadScreenState extends State<UploadScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Your file will be encrypted before uploading',
+                      'Select a file to upload',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ],
@@ -931,47 +931,6 @@ class _UploadScreenState extends State<UploadScreen> {
                 ),
 
               const SizedBox(height: 32),
-
-              // SECURITY INFO
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.shield,
-                          size: 20,
-                          color: Colors.amber.shade700,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Security Information',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '✓ Files are encrypted locally on your device\n'
-                      '✓ Encryption key never transmitted\n'
-                      '✓ Server only stores encrypted data\n'
-                      '✓ Only owner can decrypt and print\n'
-                      '✓ File auto-deletes after printing',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
