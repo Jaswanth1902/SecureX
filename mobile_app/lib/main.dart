@@ -24,6 +24,7 @@ import 'providers/theme_provider.dart';
 // Main entry point for the Flutter mobile application
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     ErrorLogger().logError(
