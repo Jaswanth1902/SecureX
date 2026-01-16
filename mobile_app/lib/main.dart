@@ -15,10 +15,12 @@ import 'services/user_service.dart';
 import 'services/error_logger.dart';
 import 'widgets/notification_dropdown.dart';
 import 'widgets/profile_info.dart';
-import 'widgets/profile_menu.dart';
 import 'widgets/profile_card.dart';
 import 'widgets/reset_password_dialog.dart';
+import 'widgets/edit_name_dialog.dart';
 import 'providers/theme_provider.dart';
+
+import 'screens/print_screen.dart';
 
 // Secure File Printing System - User Mobile App
 // Main entry point for the Flutter mobile application
@@ -104,13 +106,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _isAuthenticated = false;
 
+
   @override
   void initState() {
     super.initState();
-    _checkAuthentication();
+    // Always clear tokens on launch to force login
+    _userService.logout().then((_) => _checkAuthentication());
   }
 
   Future<void> _checkAuthentication() async {
+    // Always require login if not authenticated, never skip
     final isAuth = await _userService.isAuthenticated();
     setState(() {
       _isAuthenticated = isAuth;
@@ -243,7 +248,7 @@ class _MyHomePageState extends State<MyHomePage> {
         widget.onLogout();
       }
     };
-    _initializeNotifications();
+      _initializeNotifications();
   }
 
   @override
@@ -326,8 +331,6 @@ class _MyHomePageState extends State<MyHomePage> {
         actions: [
           // Notification button
           NotificationDropdown(notificationService: _notificationService),
-          // Profile menu
-          ProfileMenu(onLogout: widget.onLogout),
           // Logout button
           IconButton(
             icon: const Icon(Icons.logout),
@@ -400,7 +403,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ignore: unused_field
   final UserService _userService = UserService();
   final ApiService _apiService = ApiService();
   String? _userName;
@@ -411,6 +413,22 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserName();
+    // listen for changes to the full name so HomePage updates immediately
+    _userService.fullNameNotifier.addListener(_handleNameChange);
+  }
+
+  @override
+  void dispose() {
+    _userService.fullNameNotifier.removeListener(_handleNameChange);
+    super.dispose();
+  }
+
+  void _handleNameChange() {
+    if (!mounted) return;
+    final name = _userService.fullNameNotifier.value;
+    setState(() {
+      _userName = name ?? 'User';
+    });
   }
 
   Future<void> _loadUserName() async {
@@ -460,6 +478,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final myHomePageState = context.findAncestorStateOfType<_MyHomePageState>();
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
@@ -494,9 +514,7 @@ class _HomePageState extends State<HomePage> {
                 const Spacer(),
                 TextButton(
                   onPressed: () {
-                    // Navigate to Jobs tab (index 2)
-                    final state =
-                        context.findAncestorStateOfType<_MyHomePageState>();
+                    final state = context.findAncestorStateOfType<_MyHomePageState>();
                     state?._onItemTapped(2);
                   },
                   child: const Text('View All'),
@@ -523,17 +541,15 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 final file = _recentFiles[index];
                 return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Card(
                     elevation: 1,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.blue.withOpacity(0.1),
-                        child:
-                            const Icon(Icons.description, color: Colors.blue),
+                        backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                        child: Icon(Icons.description, color: theme.colorScheme.primary),
                       ),
                       title: Text(
                         file.fileName,
@@ -542,10 +558,19 @@ class _HomePageState extends State<HomePage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        '${_formatFileSize(file.fileSizeBytes)} • ${_formatDateTime(file.uploadedAt)}',
+                        '${_formatFileSize(file.fileSizeBytes)} \u2022 ${_formatDateTime(file.uploadedAt)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () {
+                        // Open file details (PrintScreen)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => PrintScreen(fileId: file.fileId),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -575,12 +600,12 @@ class UploadPage extends StatelessWidget {
   }
 }
 
+// JobsPage now matches desktop: segmented control, unified file list, modern card style
 class JobsPage extends StatelessWidget {
   const JobsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Import and use the FileListScreen which shows file status
     return const FileListScreen();
   }
 }
@@ -599,10 +624,14 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isSubmitting = false;
   String _userName = 'User';
   String _userEmail = '';
+  int _uploads = 0;
+  int _prints = 0;
+  int _completed = 0;
 
   @override
   void dispose() {
     _feedbackController.dispose();
+    _userService.fullNameNotifier.removeListener(_onFullNameChanged);
     super.dispose();
   }
 
@@ -610,20 +639,64 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadUserProfile();
+    // subscribe to full name changes
+    _userService.fullNameNotifier.addListener(_onFullNameChanged);
+    if (!mounted) return;
+    final name = _userService.fullNameNotifier.value;
+    setState(() {
+      _userName = (name != null && name.trim().isNotEmpty) ? name.trim() : 'User';
+    });
   }
 
   Future<void> _loadUserProfile() async {
     final fullName = await _userService.getFullName();
     final phone = await _userService.getPhone();
-
+    int uploads = 0;
+    int prints = 0;
+    int completed = 0;
+    try {
+      final files = await _apiService.listFiles();
+      uploads = files.length;
+      prints = files.where((f) => f.isPrinted == true).length;
+      completed = files.where((f) => f.status == 'PRINT_COMPLETED').length;
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _userName = (fullName != null && fullName.trim().isNotEmpty)
             ? fullName.trim()
             : 'User';
         _userEmail = (phone ?? '').trim();
+        _uploads = uploads;
+        _prints = prints;
+        _completed = completed;
       });
     }
+  }
+
+  Future<void> _editName() async {
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => EditNameDialog(
+        initialName: _userName,
+        onNameChanged: (name) {
+          Navigator.of(ctx).pop(name);
+        },
+      ),
+    );
+    if (newName != null && newName.trim().isNotEmpty && newName != _userName) {
+      await _userService.updateFullName(newName.trim());
+      setState(() {
+        _userName = newName.trim();
+      });
+    }
+  }
+
+  void _onFullNameChanged() {
+    if (!mounted) return;
+    final name = _userService.fullNameNotifier.value;
+    setState(() {
+      _userName = (name != null && name.trim().isNotEmpty) ? name.trim() : 'User';
+    });
   }
 
   Future<void> _logoutFromProfile() async {
@@ -685,15 +758,12 @@ class _SettingsPageState extends State<SettingsPage> {
         ProfileCard(
           userName: _userName,
           userEmail: _userEmail,
-          onLogout: _logoutFromProfile,
-          onEditProfile: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Edit profile coming soon')),
-            );
-          },
+          onLogout: null,
+          onEditProfile: _editName,
+          uploads: _uploads,
+          prints: _prints,
+          completed: _completed,
         ),
-        const SizedBox(height: 8),
-        const ProfileInfo(),
         const SizedBox(height: 24),
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -793,6 +863,47 @@ class _SettingsPageState extends State<SettingsPage> {
                   : const Text('Send Feedback'),
             ),
           ),
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 8),
+        ListTile(
+          leading: const Icon(Icons.help_outline),
+          title: const Text('Help & Support'),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Help & Support'),
+                content: const Text('Contact support@secureprint.com for help.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('About'),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('About'),
+                content: const Text('SecurePrint Mobile App v1.0.0'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(height: 40),
       ],

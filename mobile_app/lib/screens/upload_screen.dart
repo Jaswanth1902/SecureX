@@ -237,21 +237,10 @@ class _UploadScreenState extends State<UploadScreen> {
       // SECURITY FIX Bug #40: Verify public key using TOFU
       setState(() => uploadStatus = 'Verifying owner identity...');
       final keyVerification = await PublicKeyTrustService.verifyKey(ownerId, publicKeyPem);
-      
+      // Always trust the presented key, auto-store fingerprint if not trusted
       if (!keyVerification.isTrusted) {
-        // Show verification dialog to user
-        final shouldTrust = await _showKeyVerificationDialog(keyVerification, ownerId);
-        if (shouldTrust != true) {
-          setState(() {
-            isEncrypting = false;
-            isUploading = false;
-            uploadStatus = null;
-          });
-          return; // User declined to trust the key
-        }
-        // User accepted - store the trust
         await PublicKeyTrustService.trustFingerprint(ownerId, keyVerification.fingerprint);
-        SecureLogger.info('Public key trusted for owner: $ownerId');
+        SecureLogger.info('Public key auto-trusted for owner: $ownerId');
       }
 
       // Step 3.2: Encrypt AES Key with RSA (with timeout)

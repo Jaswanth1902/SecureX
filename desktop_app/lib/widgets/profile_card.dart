@@ -5,6 +5,7 @@ class ProfileCard extends StatelessWidget {
   final String userEmail;
   final String status;
   final bool isDarkMode;
+  final VoidCallback? onEdit;
 
   const ProfileCard({
     super.key,
@@ -12,6 +13,7 @@ class ProfileCard extends StatelessWidget {
     required this.userEmail,
     this.status = 'Active',
     required this.isDarkMode,
+    this.onEdit,
   });
 
   @override
@@ -169,6 +171,17 @@ class ProfileCard extends StatelessWidget {
               ],
             ),
           ),
+          // Edit button (top-right)
+          if (onEdit != null)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: IconButton(
+                icon: Icon(Icons.edit, color: Colors.white.withOpacity(0.9)),
+                onPressed: onEdit,
+                tooltip: 'Edit profile',
+              ),
+            ),
         ],
       ),
     );

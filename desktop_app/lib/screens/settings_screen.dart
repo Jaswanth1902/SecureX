@@ -275,12 +275,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             children: [
-              // PROFILE CARD WIDGET (Game-like Zomato style)
+              // PROFILE CARD WIDGET (Game-like Zomato style) — keep edit on card
               ProfileCard(
                 userName: userName,
                 userEmail: userEmail,
                 status: 'Active',
                 isDarkMode: isDark,
+                onEdit: () => _showEditNameDialog(context, userName, isDark),
               ),
               const SizedBox(height: 24),
               
@@ -313,33 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // PROFILE SECTION
-              _buildSectionTitle('PROFILE', sectionTitleColor),
-              _buildCard(
-                cardColor,
-                border: cardBorder,
-                children: [
-                  _buildProfileRow(
-                    'Name', 
-                    userName, 
-                    textColor, 
-                    labelColor, 
-                    isDark, 
-                    primaryColor,
-                    onEdit: () => _showEditNameDialog(context, userName, isDark),
-                  ),
-                  _buildDivider(isDark),
-                  _buildProfileRow(
-                    'Email-id', 
-                    userEmail, 
-                    textColor, 
-                    labelColor, 
-                    isDark, 
-                    primaryColor,
-                    onEdit: null // Disable edit for email
-                  ),
-                ],
-              ),
+              // PROFILE SECTION removed — ProfileCard at top contains edit action now
               const SizedBox(height: 24),
 
               // DANGER ZONE
@@ -487,40 +462,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileRow(String label, String value, Color textColor, Color labelColor, bool isDark, Color primaryColor, {VoidCallback? onEdit}) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(color: labelColor, fontSize: 12),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          if (onEdit != null)
-             GestureDetector(
-               onTap: onEdit,
-               child: Icon(Icons.edit, size: 20, color: isDark ? const Color(0xFF9CA3AF).withOpacity(0.5) : primaryColor),
-             ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildActionRow(String title, Color textColor, Widget actionButton) {
      return Padding(

@@ -1,33 +1,38 @@
-// ========================================
-// USER SERVICE - TOKEN & SECURE STORAGE
-// Manages JWT tokens and secure storage
-// ========================================
 
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
-class UserService {
-  static const _accessTokenKey = 'access_token';
-  static const _refreshTokenKey = 'refresh_token';
-  static const _userIdKey = 'user_id';
-  static const _phoneKey = 'user_phone';
-  static const _fullNameKey = 'full_name';
+  import 'dart:convert';
+  import 'package:shared_preferences/shared_preferences.dart';
+  import 'package:flutter/foundation.dart';
 
-  // Singleton instance
-  static final UserService _instance = UserService._internal();
-  factory UserService() => _instance;
-  UserService._internal();
+  // ========================================
+  // USER SERVICE - TOKEN & SECURE STORAGE
+  // Manages JWT tokens and secure storage
+  // ========================================
 
-  SharedPreferences? _prefs;
+  class UserService {
+    static const _accessTokenKey = 'access_token';
+    static const _refreshTokenKey = 'refresh_token';
+    static const _userIdKey = 'user_id';
+    static const _phoneKey = 'user_phone';
+    static const _fullNameKey = 'full_name';
 
-  // IN-MEMORY CACHE for immediate retrieval after login
-  String? _cachedAccessToken;
+    // Singleton instance
+    static final UserService _instance = UserService._internal();
+    factory UserService() => _instance;
+    UserService._internal();
 
-  Future<SharedPreferences> get _storage async {
-    _prefs ??= await SharedPreferences.getInstance();
-    return _prefs!;
-  }
+    SharedPreferences? _prefs;
+
+    // Notifier to broadcast full name changes to UI listeners
+    final ValueNotifier<String?> fullNameNotifier = ValueNotifier<String?>(null);
+
+    // IN-MEMORY CACHE for immediate retrieval after login
+    String? _cachedAccessToken;
+
+    Future<SharedPreferences> get _storage async {
+      _prefs ??= await SharedPreferences.getInstance();
+      return _prefs!;
+    }
 
   // ========================================
   // TOKEN STORAGE
@@ -63,6 +68,8 @@ class UserService {
       if (kDebugMode) {
         print('DEBUG (UserService): Tokens saved successfully. Cache updated.');
       }
+      // update notifier so listeners can react immediately
+      fullNameNotifier.value = fullName;
     } catch (e) {
       if (kDebugMode) {
         print('DEBUG (UserService): Failed to save tokens: $e');
@@ -125,6 +132,9 @@ class UserService {
   Future<String?> getFullName() async {
     try {
       final storage = await _storage;
+      // populate notifier if not set
+      final name = storage.getString(_fullNameKey);
+      if (fullNameNotifier.value == null) fullNameNotifier.value = name;
       return storage.getString(_fullNameKey);
     } catch (e) {
       return null;
@@ -195,5 +205,19 @@ class UserService {
 
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     return now >= expTime;
+  }
+  /// Update stored full name
+  Future<void> updateFullName(String newName) async {
+    try {
+      final storage = await _storage;
+      await storage.setString(_fullNameKey, newName);
+      // notify listeners immediately
+      fullNameNotifier.value = newName;
+      if (kDebugMode) {
+        print('DEBUG (UserService): Full name updated to: $newName');
+      }
+    } catch (e) {
+      throw Exception('Failed to update full name: $e');
+    }
   }
 }

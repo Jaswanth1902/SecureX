@@ -3,235 +3,188 @@ import 'package:flutter/material.dart';
 class ProfileCard extends StatelessWidget {
   final String userName;
   final String userEmail;
-  final VoidCallback onLogout;
+  final VoidCallback? onLogout;
   final VoidCallback? onEditProfile;
+  final int uploads;
+  final int prints;
+  final int completed;
 
   const ProfileCard({
-    super.key,
+    Key? key,
     required this.userName,
     required this.userEmail,
-    required this.onLogout,
+    this.onLogout,
     this.onEditProfile,
-  });
+    this.uploads = 0,
+    this.prints = 0,
+    this.completed = 0,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Game card coloring restored
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    // Use exact purple-pink gradient as in screenshots for both themes
+    final cardGradient = LinearGradient(
+      colors: isDark
+          ? [Color(0xFF232526), Color(0xFF414345)] // deep purple/gray for dark
+          : [Color(0xFF7B2FF2), Color(0xFFf357a8)], // previous dark theme for light
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+    final textColor = Colors.white;
+    final subTextColor = Colors.white70;
+    final accentColor = isDark ? Color(0xFFf093fb) : Color(0xFFf093fb);
+
     return Container(
-      margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF8A2BE2), // BlueViolet
-            Color(0xFFBA55D3), // MediumOrchid
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: cardGradient,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8A2BE2).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Background pattern (optional decorative circles)
-          Positioned(
-            right: -30,
-            top: -30,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -20,
-            bottom: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
-              ),
-            ),
-          ),
-          
-          // Main content
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with avatar and logout
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 3,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 35,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          userName.isNotEmpty 
-                              ? userName[0].toUpperCase() 
-                              : 'U',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF8A2BE2),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    
-                    // Logout button
-                    IconButton(
-                      onPressed: onLogout,
-                      icon: const Icon(
-                        Icons.logout_rounded,
-                        color: Colors.white,
-                      ),
-                      tooltip: 'Logout',
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // User name
-                Text(
-                  userName.isEmpty ? 'User' : userName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                
-                const SizedBox(height: 6),
-                
-                // User email
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.email_outlined,
-                      size: 16,
-                      color: Colors.white70,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        userEmail.isEmpty ? 'email@example.com' : userEmail,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                          letterSpacing: 0.3,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Stats row (Zomato-style)
                 Container(
-                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem(Icons.upload_file, '0', 'Uploads'),
-                      Container(
-                        width: 1,
-                        height: 30,
-                        color: Colors.white30,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: accentColor,
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      _buildStatItem(Icons.print_outlined, '0', 'Prints'),
-                      Container(
-                        width: 1,
-                        height: 30,
-                        color: Colors.white30,
-                      ),
-                      _buildStatItem(Icons.check_circle_outline, '0', 'Completed'),
                     ],
                   ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Edit profile button
-                if (onEditProfile != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onEditProfile,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white, width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
+                  child: CircleAvatar(
+                    radius: 35,
+                    backgroundColor: accentColor.withOpacity(0.1),
+                    child: Text(
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
                       ),
                     ),
                   ),
+                ),
+                const Spacer(),
+                // Logout icon removed from ProfileCard as per request
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              userName.isEmpty ? 'User' : userName,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.email_outlined, size: 16, color: subTextColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    userEmail.isEmpty ? 'email@example.com' : userEmail,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: subTextColor,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(Icons.upload_file, uploads.toString(), 'Uploads', accentColor, textColor),
+                  Container(
+                    width: 1,
+                    height: 30,
+                    color: accentColor.withOpacity(0.2),
+                  ),
+                  _buildStatItem(Icons.print_outlined, prints.toString(), 'Prints', accentColor, textColor),
+                  Container(
+                    width: 1,
+                    height: 30,
+                    color: accentColor.withOpacity(0.2),
+                  ),
+                  _buildStatItem(Icons.check_circle_outline, completed.toString(), 'Completed', accentColor, textColor),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onEditProfile,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: accentColor,
+                  side: BorderSide(color: accentColor, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: Icon(Icons.edit_outlined, size: 18, color: accentColor),
+                label: Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatItem(IconData icon, String value, String label) {
+  Widget _buildStatItem(IconData icon, String value, String label, Color accent, Color textColor) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white, size: 20),
+        Icon(icon, color: accent, size: 20),
         const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: textColor,
           ),
         ),
         const SizedBox(height: 2),
@@ -239,7 +192,7 @@ class ProfileCard extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.white.withOpacity(0.8),
+            color: accent.withOpacity(0.8),
             letterSpacing: 0.3,
           ),
         ),
