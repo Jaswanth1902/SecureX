@@ -67,6 +67,148 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showChangePasswordDialog(BuildContext context, bool isDark) {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E0A30) : Colors.white,
+          title: Text(
+            'Change Password',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: currentController,
+                obscureText: true,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'Current password',
+                  labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.grey.shade600),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.purple : Colors.purple),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: newController,
+                obscureText: true,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  labelText: 'New password',
+                  labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.grey.shade600),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: isDark ? Colors.purple : Colors.purple),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final currentPassword = currentController.text.trim();
+                final newPassword = newController.text.trim();
+                if (currentPassword.isEmpty || newPassword.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please fill out both fields')),
+                  );
+                  return;
+                }
+
+                final success = await context
+                    .read<AuthService>()
+                    .changePassword(currentPassword, newPassword);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success ? 'Password updated' : 'Failed to update password',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showFeedbackDialog(BuildContext context, bool isDark) {
+    final feedbackController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E0A30) : Colors.white,
+          title: Text(
+            'Send Feedback',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: TextField(
+            controller: feedbackController,
+            maxLines: 5,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+            decoration: InputDecoration(
+              hintText: 'Share your feedback here...',
+              hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.grey.shade600),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: isDark ? Colors.purple : Colors.purple),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final message = feedbackController.text.trim();
+                if (message.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Feedback cannot be empty')),
+                  );
+                  return;
+                }
+
+                final success = await context.read<AuthService>().sendFeedback(message);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success ? 'Feedback sent' : 'Failed to send feedback',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Send'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeService = context.watch<ThemeService>();
@@ -209,7 +351,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildActionRow(
                     'Change password', 
                     textColor, 
-                    _buildGradientButton('Change', primaryColor, onTap: null) // Disabled
+                    _buildGradientButton(
+                      'Change',
+                      primaryColor,
+                      onTap: () => _showChangePasswordDialog(context, isDark),
+                    )
                   ),
                   _buildDivider(isDark),
                   _buildActionRow(
@@ -242,7 +388,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                      },
                    ),
                    _buildDivider(isDark),
-                   _buildNavRow('Send Feedback', textColor),
+                  _buildNavRow(
+                    'Send Feedback',
+                    textColor,
+                    onTap: () => _showFeedbackDialog(context, isDark),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),

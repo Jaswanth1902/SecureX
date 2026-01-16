@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -7,6 +9,7 @@ import 'services/encryption_service.dart';
 import 'services/key_service.dart';
 import 'services/notification_service.dart';
 import 'services/theme_service.dart';
+import 'services/error_logger.dart';
 import 'screens/login_screen.dart';
 
 // Global key for navigation without context
@@ -15,6 +18,24 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    ErrorLogger().logError(
+      context: 'FlutterError',
+      message: details.exceptionAsString(),
+      stackTrace: details.stack,
+    );
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    ErrorLogger().logError(
+      context: 'PlatformDispatcher',
+      message: error.toString(),
+      stackTrace: stack,
+    );
+    return true;
+  };
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1280, 720),

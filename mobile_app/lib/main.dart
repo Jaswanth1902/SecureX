@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -10,6 +12,7 @@ import 'services/encryption_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
+import 'services/error_logger.dart';
 import 'widgets/notification_dropdown.dart';
 import 'widgets/profile_info.dart';
 import 'widgets/profile_menu.dart';
@@ -21,6 +24,24 @@ import 'providers/theme_provider.dart';
 // Main entry point for the Flutter mobile application
 
 void main() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    ErrorLogger().logError(
+      context: 'FlutterError',
+      message: details.exceptionAsString(),
+      stackTrace: details.stack,
+    );
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    ErrorLogger().logError(
+      context: 'PlatformDispatcher',
+      message: error.toString(),
+      stackTrace: stack,
+    );
+    return true;
+  };
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),

@@ -104,30 +104,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildCard(
-                    cardColor,
-                    border: cardBorder,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle('LEGAL', mutedColor),
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          title: Text('Open-source licenses', style: TextStyle(color: textColor, fontWeight: FontWeight.w500)),
-                          subtitle: Text('View third-party license details', style: TextStyle(color: mutedColor)),
-                          trailing: Icon(Icons.open_in_new, color: mutedColor, size: 18),
-                          onTap: () {
-                            showLicensePage(
-                              context: context,
-                              applicationName: appName,
-                              applicationVersion: version,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // Removed open-source licenses button
                 ],
               );
             },
