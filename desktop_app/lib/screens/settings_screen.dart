@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/page_transitions.dart';
 import 'login_screen.dart';
+import 'about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -231,6 +232,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                    _buildInfoRow('Version', '1.0.0', textColor, isDark),
                    _buildDivider(isDark),
+                   _buildNavRow(
+                     'About SecurePrint',
+                     textColor,
+                     onTap: () {
+                       Navigator.of(context).push(
+                         buildFadeSlideRoute(const AboutScreen()),
+                       );
+                     },
+                   ),
+                   _buildDivider(isDark),
                    _buildNavRow('Send Feedback', textColor),
                 ],
               ),
@@ -303,22 +314,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildNavRow(String title, Color textColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 15,
+  Widget _buildNavRow(String title, Color textColor, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 15,
+              ),
             ),
-          ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
-        ],
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+          ],
+        ),
       ),
     );
   }
