@@ -650,6 +650,12 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final headerBgColor = isDarkMode ? const Color(0xFF2D3E5F) : const Color(0xFFF0F4FF);
+    final headerBorderColor = isDarkMode ? const Color(0xFF4A5F7F) : const Color(0xFFB0C4E8);
+    final headerTextColor = isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
+    final headerIconColor = isDarkMode ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('SecurePrint - Upload File'),
@@ -666,25 +672,36 @@ class _UploadScreenState extends State<UploadScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
+                  color: headerBgColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: headerBorderColor, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDarkMode ? 0.3 : 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.folder_open, size: 48, color: Colors.blue.shade600),
+                    Icon(Icons.folder_open, size: 48, color: headerIconColor),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       '📂 Browse Your File',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: headerTextColor,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Select a file to upload',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                      ),
                     ),
                   ],
                 ),
@@ -717,15 +734,25 @@ class _UploadScreenState extends State<UploadScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          border: Border.all(color: Colors.green.shade300),
-                          borderRadius: BorderRadius.circular(8),
+                          color: isDarkMode ? const Color(0xFF1B3A2A) : const Color(0xFFF0FDF4),
+                          border: Border.all(
+                            color: isDarkMode ? const Color(0xFF22C55E) : const Color(0x8622C55E),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.1),
+                              blurRadius: 8,
+                            )
+                          ],
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.check_circle,
-                              color: Colors.green.shade600,
+                              color: isDarkMode ? const Color(0xFF22C55E) : const Color(0xFF15803D),
+                              size: 24,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -734,16 +761,17 @@ class _UploadScreenState extends State<UploadScreen> {
                                 children: [
                                   Text(
                                     selectedFileName!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       overflow: TextOverflow.ellipsis,
+                                      color: isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937),
                                     ),
                                   ),
                                   Text(
                                     '${(selectedFileSize! / 1024 / 1024).toStringAsFixed(2)} MB',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade600,
                                     ),
                                   ),
                                 ],
@@ -794,18 +822,28 @@ class _UploadScreenState extends State<UploadScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
+                        color: isDarkMode ? const Color(0xFF1E3A5F) : const Color(0xFFF0F4FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkMode ? const Color(0xFF2563EB) : const Color(0xFFB0C4E8),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.1),
+                            blurRadius: 8,
+                          )
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             uploadStatus ?? 'Processing...',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -821,7 +859,7 @@ class _UploadScreenState extends State<UploadScreen> {
                             '${(uploadProgress * 100).toStringAsFixed(0)}%',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -838,53 +876,70 @@ class _UploadScreenState extends State<UploadScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade300),
+                        color: isDarkMode ? const Color(0xFF1B3A2A) : const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkMode ? const Color(0xFF22C55E) : const Color(0x8622C55E),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.1),
+                            blurRadius: 8,
+                          )
+                        ],
                       ),
                       child: Column(
                         children: [
                           Icon(
                             Icons.check_circle,
                             size: 48,
-                            color: Colors.green.shade600,
+                            color: isDarkMode ? const Color(0xFF22C55E) : const Color(0xFF15803D),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Upload Complete!',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                              color: isDarkMode ? const Color(0xFF22C55E) : const Color(0xFF15803D),
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Your file is encrypted and stored on the server.',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF3F4F6),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDarkMode ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
+                              ),
                             ),
                             child: SelectableText(
                               uploadedFileId!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Courier',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
+                                color: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF1F2937),
                               ),
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Share this ID with the owner to print the file',
                             style: TextStyle(
                               fontSize: 12,
                               fontStyle: FontStyle.italic,
+                              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -907,19 +962,31 @@ class _UploadScreenState extends State<UploadScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade300),
-                        borderRadius: BorderRadius.circular(8),
+                        color: isDarkMode ? const Color(0xFF3A1A1A) : const Color(0xFFFEF2F2),
+                        border: Border.all(
+                          color: isDarkMode ? const Color(0xFFEF4444) : const Color(0xFFFCA5A5),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.1),
+                            blurRadius: 8,
+                          )
+                        ],
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade600),
+                          Icon(
+                            Icons.error_outline,
+                            color: isDarkMode ? const Color(0xFFEF4444) : const Color(0xFFDC2626),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               errorMessage!,
                               style: TextStyle(
-                                color: Colors.red.shade700,
+                                color: isDarkMode ? const Color(0xFFFCA5A5) : const Color(0xFF7F1D1D),
                                 fontSize: 12,
                               ),
                             ),

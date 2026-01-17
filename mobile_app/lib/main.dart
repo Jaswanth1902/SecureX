@@ -53,9 +53,9 @@ class SecurePrintUserApp extends StatelessWidget {
         brightness: Brightness.light,
       ),
       fontFamily: 'Roboto',
-      scaffoldBackgroundColor: const Color(0xFFFAFBFC),
+      scaffoldBackgroundColor: Colors.transparent,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
+        backgroundColor: Color(0xFFFFFFFFE8),
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
@@ -66,17 +66,17 @@ class SecurePrintUserApp extends StatelessWidget {
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.white,
-        shadowColor: Colors.black.withOpacity(0.08),
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white.withOpacity(0.92),
+        shadowColor: Colors.black.withOpacity(0.12),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF3F4F6),
+        fillColor: Colors.white.withOpacity(0.8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -117,7 +117,7 @@ class SecurePrintUserApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       fontFamily: 'Roboto',
-      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      scaffoldBackgroundColor: Colors.transparent,
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF1E293B),
         elevation: 0,
@@ -130,9 +130,9 @@ class SecurePrintUserApp extends StatelessWidget {
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: const Color(0xFF1E293B),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: const Color(0xFF1E293B).withOpacity(0.9),
         shadowColor: Colors.black.withOpacity(0.3),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -480,19 +480,52 @@ class _MyHomePageState extends State<MyHomePage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFF0F9FF),
-              Color(0xFFE0F2FE),
-              Color(0xFFF8FAFC),
-              Color(0xFFEFF6FF),
+              Color(0xFF667EEA),
+              Color(0xFF764BA2),
+              Color(0xFFF093FB),
+              Color(0xFF4FD1E4),
             ],
-            stops: [0.0, 0.4, 0.6, 1.0],
+            stops: [0.0, 0.33, 0.66, 1.0],
+          ),
+        ),
+        child: scaffoldBody,
+      );
+    } else if (themeProvider.isDarkMode) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0F172A),
+              const Color(0xFF1A2744),
+              const Color(0xFF0F172A).withOpacity(0.95),
+              const Color(0xFF1E2B3D),
+            ],
+            stops: const [0.0, 0.33, 0.66, 1.0],
+          ),
+        ),
+        child: scaffoldBody,
+      );
+    } else {
+      // Light theme - apply subtle light gradient
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF8FBFF),
+              Color(0xFFEFF6FF),
+              Color(0xFFF0F9FF),
+              Color(0xFFFAFCFF),
+            ],
+            stops: [0.0, 0.33, 0.66, 1.0],
           ),
         ),
         child: scaffoldBody,
       );
     }
-    
-    return scaffoldBody;
   }
 }
 
@@ -528,9 +561,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
-    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
-    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF6B7280);
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+    final cardColor = isDark 
+        ? const Color(0xFF1E293B)
+        : Colors.white.withOpacity(0.92);
+    final iconBgColor = isDark
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFDEF7FF);
+    final iconColor = isDark
+        ? const Color(0xFF60A5FA)
+        : const Color(0xFF0369A1);
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -559,12 +600,12 @@ class _HomePageState extends State<HomePage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDEF7FF),
+                        color: iconBgColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.shield,
-                        color: Color(0xFF0369A1),
+                        color: iconColor,
                         size: 24,
                       ),
                     ),
@@ -752,10 +793,10 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
-    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
-    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF6B7280);
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB);
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white.withOpacity(0.92);
+    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB);
 
     return ListView(
       padding: const EdgeInsets.all(20),
