@@ -231,6 +231,10 @@ class _FileListScreenState extends State<FileListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor = isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Files'),
@@ -271,21 +275,16 @@ class _FileListScreenState extends State<FileListScreen> {
                   Icon(
                     Icons.folder_open,
                     size: 64,
-                    color: Colors.grey.shade400,
+                    color: isDarkMode ? const Color(0xFF475569) : Colors.grey.shade300,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No files yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to upload
-                      Navigator.pushNamed(context, '/upload');
-                    },
-                    icon: const Icon(Icons.upload),
-                    label: const Text('Upload a File'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: secondaryTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -323,12 +322,16 @@ class _FileListScreenState extends State<FileListScreen> {
                               Icon(
                                 Icons.filter_list_off,
                                 size: 48,
-                                color: Colors.grey.shade400,
+                                color: isDarkMode ? const Color(0xFF475569) : Colors.grey.shade300,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'No ${selectedFilter.toLowerCase()} files',
-                                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: secondaryTextColor,
+                                ),
                               ),
                             ],
                           ),

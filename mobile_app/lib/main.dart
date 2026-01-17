@@ -36,7 +36,7 @@ class SecurePrintUserApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'SecureX - Secure File Management',
+      title: 'SecureX',
       themeMode: themeProvider.themeMode,
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
@@ -55,25 +55,25 @@ class SecurePrintUserApp extends StatelessWidget {
       fontFamily: 'Roboto',
       scaffoldBackgroundColor: Colors.transparent,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFFFFFFFFE8),
+        backgroundColor: Color(0xFFFAFCFF),
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
         titleTextStyle: TextStyle(
-          color: Color(0xFF1F2937),
+          color: Color(0xFF111827),
           fontSize: 20,
           fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 3,
+        elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.white.withOpacity(0.92),
-        shadowColor: Colors.black.withOpacity(0.12),
+        color: Colors.white.withOpacity(0.88),
+        shadowColor: Colors.black.withOpacity(0.10),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withOpacity(0.8),
+        fillColor: Colors.white.withOpacity(0.85),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -119,7 +119,7 @@ class SecurePrintUserApp extends StatelessWidget {
       fontFamily: 'Roboto',
       scaffoldBackgroundColor: Colors.transparent,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E293B),
+        backgroundColor: Color(0xFF1A2B3F),
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
@@ -132,12 +132,12 @@ class SecurePrintUserApp extends StatelessWidget {
       cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: const Color(0xFF1E293B).withOpacity(0.9),
-        shadowColor: Colors.black.withOpacity(0.3),
+        color: const Color(0xFF1E293B).withOpacity(0.85),
+        shadowColor: Colors.black.withOpacity(0.25),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF334155),
+        fillColor: const Color(0xFF2D3E5F),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFF475569)),
@@ -247,7 +247,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     if (_isAuthenticated) {
       return MyHomePage(
-        title: 'SecurePrint - Send Files Securely',
+        title: 'SecureX',
+       
         onLogout: _handleLogout,
       );
     }
@@ -560,18 +561,23 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
+    final isDark = themeProvider.isDarkMode;
+    final isGradient = themeProvider.isGradientMode;
+    
+    // Unified theme colors - used consistently across all pages
+    // Gradient theme uses light surfaces for visibility on colorful background
     final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
     final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
     final cardColor = isDark 
-        ? const Color(0xFF1E293B)
-        : Colors.white.withOpacity(0.92);
+        ? const Color(0xFF1E293B).withOpacity(0.85)
+        : Colors.white.withOpacity(0.88);
     final iconBgColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFDEF7FF);
+        ? const Color(0xFF2D3E5F)
+        : const Color(0xFFF3F4FF);
     final iconColor = isDark
         ? const Color(0xFF60A5FA)
-        : const Color(0xFF0369A1);
+        : const Color(0xFF2563EB);
+    final shadowColor = Colors.black.withOpacity(isDark ? 0.25 : 0.10);
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -586,7 +592,7 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: shadowColor,
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -622,15 +628,7 @@ class _HomePageState extends State<HomePage> {
                               color: textColor,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'SecureX - Secure File Management',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: secondaryTextColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          const SizedBox(height: 0),
                         ],
                       ),
                     ),
@@ -660,9 +658,9 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 32),
           
-          // Quick Stats Section
+          // Recent Files Section
           Text(
-            'Quick Stats',
+            'Recent Files',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -670,86 +668,56 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  cardColor,
-                  Icons.upload_file,
-                  const Color(0xFF3B82F6),
-                  'Ready to Upload',
-                  'Start sending files securely',
-                  textColor,
-                  secondaryTextColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  cardColor,
-                  Icons.shield_outlined,
-                  const Color(0xFF10B981),
-                  'Encrypted',
-                  'End-to-end protection',
-                  textColor,
-                  secondaryTextColor,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    Color cardColor,
-    IconData icon,
-    Color iconBgColor,
-    String title,
-    String subtitle,
-    Color textColor,
-    Color secondaryTextColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: iconBgColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Icon(icon, color: iconBgColor, size: 20),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: secondaryTextColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: iconBgColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.history,
+                        color: iconColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Recently Uploaded',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Your uploaded files appear here',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -792,11 +760,23 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
-    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
-    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white.withOpacity(0.92);
-    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB);
+    final isDark = themeProvider.isDarkMode;
+    final isGradient = themeProvider.isGradientMode;
+    
+    // Unified theme colors - matches HomePage and UploadPage colors
+    // Gradient theme uses light surfaces for visibility on colorful background
+    // Text colors with gradient theme support - ensuring visibility on colorful background
+    final textColor = (isDark && !isGradient) 
+        ? const Color(0xFFF1F5F9) 
+        : const Color(0xFF111827);  // Dark text for light/gradient themes
+    final secondaryTextColor = (isDark && !isGradient) 
+        ? const Color(0xFFCBD5E1) 
+        : const Color(0xFF4B5563);  // Medium-dark text for visibility
+    final cardColor = isDark 
+        ? const Color(0xFF1E293B).withOpacity(0.85)
+        : Colors.white.withOpacity(0.88);
+    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB);
+    final iconColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -1059,10 +1039,7 @@ class SettingsPage extends StatelessWidget {
           if (isAbout) {
             showDialog(
               context: context,
-              builder: (context) => const AboutDialog(
-                applicationName: 'SecureX',
-                applicationVersion: '1.0.0',
-              ),
+              builder: (context) => const _AboutDialog(),
             );
           } else {
             showDialog(
@@ -1130,6 +1107,135 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ========================================
+// CUSTOM ABOUT DIALOG (No Licenses Section)
+// ========================================
+class _AboutDialog extends StatelessWidget {
+  const _AboutDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDarkMode ? const Color(0xFF1A2B3F) : Colors.white;
+    final textColor = isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor = isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+
+    return AlertDialog(
+      backgroundColor: bgColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Text(
+        'About SecureX',
+        style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // App Name
+            Text(
+              'SecureX',
+              style: TextStyle(
+                fontSize: 56,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Securing the file is priority',
+              style: TextStyle(
+                fontSize: 13,
+                color: secondaryTextColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Version
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Version',
+                  style: TextStyle(color: secondaryTextColor, fontSize: 13),
+                ),
+                Text(
+                  '1.0.0',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Build Info
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Build',
+                  style: TextStyle(color: secondaryTextColor, fontSize: 13),
+                ),
+                Text(
+                  'Production Ready',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Security Info
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Encryption',
+                  style: TextStyle(color: secondaryTextColor, fontSize: 13),
+                ),
+                Text(
+                  'AES-256-GCM',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Description
+            Text(
+              'A secure file  printing system with end-to-end encryption.',
+              style: TextStyle(
+                fontSize: 12,
+                color: secondaryTextColor,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Close',
+            style: TextStyle(color: const Color(0xFF2563EB), fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }

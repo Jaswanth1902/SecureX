@@ -109,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // Logo/Title
             const SizedBox(height: 40),
             const Text(
-              'Secure Print',
+              'SecureX',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),

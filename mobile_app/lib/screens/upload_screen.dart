@@ -658,7 +658,7 @@ class _UploadScreenState extends State<UploadScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SecurePrint - Upload File'),
+        title: const Text('SecureX - Upload'),
         centerTitle: true,
         elevation: 0,
       ),
