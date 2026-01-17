@@ -36,75 +36,39 @@ class _FileListScreenState extends State<FileListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFiles();
+    _fetchRecentFiles();
   }
 
-  Future<void> _loadFiles() async {
+  Future<void> _fetchRecentFiles() async {
     try {
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
 
-      // Use stored token
-      String? accessToken = await userService.getAccessToken();
-      
-      if (accessToken == null) {
-        throw Exception('Not authenticated. Please log in first.');
-      }
-      
-      debugPrint('Using access token: ${accessToken.substring(0, 10)}...');
-
-      // Get user's files from API
-      final response = await http
-          .get(
-            Uri.parse('${apiService.baseUrl}/api/files'),
-            headers: {
-              'Authorization': 'Bearer $accessToken',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse('${apiService.baseUrl}/api/files'),
+        headers: {
+          'Authorization': 'Bearer ${await userService.getAccessToken()}',
+          'Content-Type': 'application/json',
+        },
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Safely validate and cast files list
-        List<Map<String, dynamic>> validatedFiles = [];
-        try {
-          if (data['files'] is List) {
-            validatedFiles = (data['files'] as List)
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-          }
-        } catch (e) {
-          debugPrint('⚠️ Error validating files list: $e');
-          validatedFiles = [];
-        }
-        
-        // Merge with local history to detect rejected files
-        final mergedFiles = await fileHistoryService.mergeWithServerFiles(validatedFiles);
-        debugPrint('📝 Merged ${validatedFiles.length} server files with local history, total: ${mergedFiles.length}');
-        
-        // Filter out dismissed files (files user explicitly removed from history)
-        final filteredFiles = await fileHistoryService.filterDismissedFiles(mergedFiles);
-        debugPrint('🗑️ Filtered out ${mergedFiles.length - filteredFiles.length} dismissed files');
-        
         setState(() {
-          files = filteredFiles;
-          _applyFilter(); // Apply selected filter
+          files = List<Map<String, dynamic>>.from(data['files']);
+          filteredFiles = files;
           isLoading = false;
         });
       } else {
-        throw Exception('Failed to load files: ${response.statusCode}');
+        throw Exception('Failed to load files');
       }
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
       });
-      debugPrint('❌ Error loading files: $e');
     }
   }
 
@@ -190,7 +154,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('File deleted')));
-                  _loadFiles();
+                  _fetchRecentFiles();
                 } else {
                   throw Exception('Delete failed');
                 }
@@ -219,7 +183,7 @@ class _FileListScreenState extends State<FileListScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('File dismissed from history')));
-      _loadFiles();
+      _fetchRecentFiles();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -261,7 +225,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _loadFiles,
+                    onPressed: _fetchRecentFiles,
                     child: const Text('Retry'),
                   ),
                 ],
@@ -337,7 +301,7 @@ class _FileListScreenState extends State<FileListScreen> {
                           ),
                         )
                       : RefreshIndicator(
-                          onRefresh: _loadFiles,
+                          onRefresh: _fetchRecentFiles,
                           child: ListView.builder(
                             itemCount: filteredFiles.length,
                             padding: const EdgeInsets.all(12),

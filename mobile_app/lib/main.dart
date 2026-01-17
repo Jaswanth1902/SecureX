@@ -9,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'services/encryption_service.dart';
 import 'services/api_service.dart';
+
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
 import 'widgets/notification_dropdown.dart';
@@ -379,15 +380,17 @@ class _MyHomePageState extends State<MyHomePage> {
     _checkFileStatuses();
   }
 
+  List<Map<String, dynamic>> _files = [];
+
   Future<void> _checkFileStatuses() async {
     try {
       String? accessToken = await _userService.getAccessToken();
-      
+
       if (accessToken == null) {
         debugPrint('No access token - user not authenticated');
         return;
       }
-      
+
       final response = await http.get(
         Uri.parse('${_apiService.baseUrl}/api/files'),
         headers: {
@@ -399,12 +402,14 @@ class _MyHomePageState extends State<MyHomePage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['files'] is List) {
-          final files = (data['files'] as List)
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList();
-          
-          await _notificationService.checkForStatusUpdates(files);
+          setState(() {
+            _files = (data['files'] as List)
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+          });
+
+          await _notificationService.checkForStatusUpdates(_files);
         }
       }
     } catch (e) {
@@ -668,60 +673,41 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: iconBgColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.history,
-                        color: iconColor,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Recently Uploaded',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Your uploaded files appear here',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          RecentFilesSection(files: []),
         ],
       ),
+    );
+  }
+}
+
+class RecentFilesSection extends StatelessWidget {
+  final List<Map<String, dynamic>> files;
+
+  const RecentFilesSection({required this.files, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    if (files.isEmpty) {
+      return Text(
+        'No recent files available.',
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.grey,
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: files.length,
+      itemBuilder: (context, index) {
+        final file = files[index];
+        return ListTile(
+          title: Text(file['file_name'] ?? 'Unknown File'),
+          subtitle: Text('Uploaded at: ${file['uploaded_at'] ?? 'N/A'}'),
+          trailing: Icon(Icons.file_present),
+        );
+      },
     );
   }
 }
