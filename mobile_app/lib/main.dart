@@ -36,30 +36,139 @@ class SecurePrintUserApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'SecurePrint - User',
+      title: 'SecureX - Secure File Management',
       themeMode: themeProvider.themeMode,
-      theme: themeProvider.isGradientMode
-          ? ThemeData(
-              primarySwatch: Colors.purple,
-              useMaterial3: true,
-              brightness: Brightness.light,
-              scaffoldBackgroundColor: Colors.transparent,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-              ),
-            )
-          : ThemeData(
-              primarySwatch: Colors.blue,
-              useMaterial3: true,
-              brightness: Brightness.light,
-            ),
-      darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
+      theme: _buildLightTheme(),
+      darkTheme: _buildDarkTheme(),
+      home: const AuthWrapper(),
+    );
+  }
+
+  static ThemeData _buildLightTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF2563EB),
+        brightness: Brightness.light,
+      ),
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFFFAFBFC),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(
+          color: Color(0xFF1F2937),
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: Colors.white,
+        shadowColor: Colors.black.withOpacity(0.08),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF3F4F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF2563EB),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData _buildDarkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF60A5FA),
         brightness: Brightness.dark,
       ),
-      home: const AuthWrapper(),
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E293B),
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(
+          color: Color(0xFFF1F5F9),
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: const Color(0xFF1E293B),
+        shadowColor: Colors.black.withOpacity(0.3),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF334155),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF475569)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF475569)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF60A5FA), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3B82F6),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF60A5FA),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }
@@ -302,16 +411,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // Refresh notifications when switching to Jobs tab
-    if (index == 2) {
-      _checkFileStatuses();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -381,12 +480,12 @@ class _MyHomePageState extends State<MyHomePage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
-              Color(0xFFf093fb),
-              Color(0xFF4facfe),
+              Color(0xFFF0F9FF),
+              Color(0xFFE0F2FE),
+              Color(0xFFF8FAFC),
+              Color(0xFFEFF6FF),
             ],
-            stops: [0.0, 0.3, 0.6, 1.0],
+            stops: [0.0, 0.4, 0.6, 1.0],
           ),
         ),
         child: scaffoldBody,
@@ -427,25 +526,190 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
+    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF6B7280);
+    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(Icons.security, size: 64, color: Colors.blue),
-          const SizedBox(height: 24),
+          // Welcome Section
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDEF7FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.shield,
+                        color: Color(0xFF0369A1),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _userName != null ? 'Welcome, ${_userName!.split(' ')[0]}!' : 'Welcome!',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'SecureX - Secure File Management',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: secondaryTextColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFFAFBFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  child: Text(
+                    '🔐 Your files are encrypted with AES-256-GCM. Send securely to your printer.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: secondaryTextColor,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          
+          // Quick Stats Section
           Text(
-            _userName != null ? 'Hi $_userName' : 'Hi',
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            'Quick Stats',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Welcome to SecurePrint',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  cardColor,
+                  Icons.upload_file,
+                  const Color(0xFF3B82F6),
+                  'Ready to Upload',
+                  'Start sending files securely',
+                  textColor,
+                  secondaryTextColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  cardColor,
+                  Icons.shield_outlined,
+                  const Color(0xFF10B981),
+                  'Encrypted',
+                  'End-to-end protection',
+                  textColor,
+                  secondaryTextColor,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Send files securely to your printer',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    Color cardColor,
+    IconData icon,
+    Color iconBgColor,
+    String title,
+    String subtitle,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconBgColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconBgColor, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 12,
+              color: secondaryTextColor,
+            ),
           ),
         ],
       ),
@@ -488,69 +752,270 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode || themeProvider.isGradientMode;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDark ? Colors.grey[300] : Colors.grey[600];
+    final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
+    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF6B7280);
+    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB);
 
     return ListView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20),
       children: [
         Text(
           'Settings',
           style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
             color: textColor,
           ),
         ),
-        const SizedBox(height: 24),
-        const ProfileInfo(),
-        const SizedBox(height: 24),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.brightness_6, color: textColor),
-          title: Text('Theme', style: TextStyle(color: textColor)),
-          trailing: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: themeProvider.isGradientMode
-                  ? 'Gradient'
-                  : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  if (newValue == 'Gradient') {
-                    themeProvider.setTheme(AppTheme.gradient);
-                  } else {
-                    themeProvider.toggleTheme(newValue == 'Dark');
-                  }
-                }
-              },
-              items: <String>['Light', 'Dark', 'Gradient']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value, style: TextStyle(color: textColor)),
-                );
-              }).toList(),
-            ),
+        const SizedBox(height: 8),
+        Text(
+          'Manage your account and preferences',
+          style: TextStyle(
+            fontSize: 14,
+            color: secondaryTextColor,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 16),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.lock_reset, color: textColor),
-          title: Text('Reset Password', style: TextStyle(color: textColor)),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (context) => const ResetPasswordDialog(),
-            );
-          },
+        const SizedBox(height: 28),
+        
+        // Profile Section
+        const ProfileInfo(),
+        const SizedBox(height: 28),
+        
+        // Preferences Section
+        _buildSectionHeader('Preferences', textColor),
+        const SizedBox(height: 12),
+        _buildSettingsCard(
+          cardColor: cardColor,
+          dividerColor: dividerColor,
+          icon: Icons.brightness_6,
+          iconColor: const Color(0xFFF59E0B),
+          title: 'Theme',
+          subtitle: 'Choose your preferred theme',
+          themeProvider: themeProvider,
+          isDark: isDark,
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
         ),
-        const SizedBox(height: 16),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.info_outline, color: textColor),
-          title: Text('About', style: TextStyle(color: textColor)),
-          onTap: () {
+        const SizedBox(height: 12),
+        
+        // Security Section
+        _buildSectionHeader('Security', textColor),
+        const SizedBox(height: 12),
+        _buildSecurityOption(
+          cardColor: cardColor,
+          dividerColor: dividerColor,
+          icon: Icons.lock_reset,
+          iconColor: const Color(0xFF3B82F6),
+          title: 'Reset Password',
+          subtitle: 'Update your password',
+          context: context,
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
+        ),
+        const SizedBox(height: 12),
+        _buildSecurityOption(
+          cardColor: cardColor,
+          dividerColor: dividerColor,
+          icon: Icons.info_outline,
+          iconColor: const Color(0xFF8B5CF6),
+          title: 'About',
+          subtitle: 'App version and information',
+          context: context,
+          textColor: textColor,
+          secondaryTextColor: secondaryTextColor,
+          isAbout: true,
+        ),
+        const SizedBox(height: 28),
+        
+        // Info Box
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFFAFBFC),
+            border: Border.all(color: dividerColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.shield,
+                      color: Color(0xFF10B981),
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Security & Privacy',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '• AES-256-GCM encryption\n'
+                '• End-to-end security\n'
+                '• No plain text storage\n'
+                '• Secure communication',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: secondaryTextColor,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, Color textColor) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: textColor,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard({
+    required Color cardColor,
+    required Color dividerColor,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required ThemeProvider themeProvider,
+    required bool isDark,
+    required Color textColor,
+    required Color secondaryTextColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: dividerColor),
+              borderRadius: BorderRadius.circular(6),
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFF3F4F6),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: themeProvider.isGradientMode
+                    ? 'Gradient'
+                    : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    if (newValue == 'Gradient') {
+                      themeProvider.setTheme(AppTheme.gradient);
+                    } else {
+                      themeProvider.toggleTheme(newValue == 'Dark');
+                    }
+                  }
+                },
+                dropdownColor: cardColor,
+                icon: const Icon(Icons.expand_more, size: 20),
+                items: <String>['Light', 'Dark', 'Gradient']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: TextStyle(color: textColor, fontSize: 14),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityOption({
+    required Color cardColor,
+    required Color dividerColor,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required BuildContext context,
+    required Color textColor,
+    required Color secondaryTextColor,
+    bool isAbout = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          if (isAbout) {
             showDialog(
               context: context,
               builder: (context) => const AboutDialog(
@@ -558,47 +1023,72 @@ class SettingsPage extends StatelessWidget {
                 applicationVersion: '1.0.0',
               ),
             );
-          },
-        ),
-        const SizedBox(height: 24),
-        Container(
+          } else {
+            showDialog(
+              context: context,
+              builder: (context) => const ResetPasswordDialog(),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: cardColor,
             borderRadius: BorderRadius.circular(12),
-            color: isDark
-                ? Colors.blue.withOpacity(0.2)
-                : Colors.blue.withOpacity(0.1),
-            border: Border.all(color: Colors.blue.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.shield, color: Colors.blue, size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    'Security & Privacy',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ],
+            border: Border.all(color: dividerColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '• Files are encrypted with AES-256-GCM encryption\n'
-                '• Your data is never stored in plain text\n'
-                '• Secure end-to-end communication over HTTPS\n'
-                '• Two-factor authentication support',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.chevron_right,
+                color: secondaryTextColor,
+                size: 20,
               ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
