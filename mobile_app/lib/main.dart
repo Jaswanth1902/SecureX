@@ -61,34 +61,176 @@ class SecurePrintUserApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'SecurePrint - User',
+      title: 'SecureX',
       debugShowCheckedModeBanner: false,
       themeMode: themeProvider.themeMode,
-      theme: themeProvider.isGradientMode
-          ? ThemeData(
-              primarySwatch: Colors.purple,
-              useMaterial3: true,
-              brightness: Brightness.light,
-              scaffoldBackgroundColor: Colors.transparent,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-              ),
-            )
-          : ThemeData(
-              primarySwatch: Colors.blue,
-              useMaterial3: true,
-              brightness: Brightness.light,
-            ),
-      darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
+      theme: _buildLightTheme(),
+      darkTheme: _buildDarkTheme(),
       home: const AuthWrapper(),
       routes: {
         '/upload': (context) => const UploadPage(),
       },
+    );
+  }
+
+  static ThemeData _buildLightTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF2563EB),
+        brightness: Brightness.light,
+      ),
+      fontFamily: 'Roboto',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFAFCFF),
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: Color(0xFF111827),
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white.withOpacity(0.88),
+      ),
+    );
+  }
+
+  static ThemeData _buildDarkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF60A5FA),
+        brightness: Brightness.dark,
+      ),
+      fontFamily: 'Roboto',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1A2B3F),
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: Color(0xFFF1F5F9),
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: const Color(0xFF1E293B).withOpacity(0.85),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF2D3E5F),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF475569)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF475569)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF60A5FA), width: 2),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+      ),
+    );
+  }
+}
+
+// ========================================
+// CUSTOM ABOUT DIALOG
+// ========================================
+class _AboutDialog extends StatelessWidget {
+  const _AboutDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDarkMode ? const Color(0xFF1A2B3F) : Colors.white;
+    final textColor =
+        isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor =
+        isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+
+    return AlertDialog(
+      backgroundColor: bgColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: Text(
+        'About SecureX',
+        style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SecureX',
+              style: TextStyle(
+                fontSize: 56,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Version', '1.0.0', secondaryTextColor, textColor),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+                'Build', 'Production Ready', secondaryTextColor, textColor),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+                'Encryption', 'AES-256-GCM', secondaryTextColor, textColor),
+            const SizedBox(height: 16),
+            Text(
+              'A secure file printing system with end-to-end encryption.',
+              style: TextStyle(
+                fontSize: 12,
+                color: secondaryTextColor,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+                color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(
+      String label, String value, Color labelColor, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: labelColor, fontSize: 13),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -145,9 +287,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_isAuthenticated) {
-      return MyHomePage(
-        title: 'SecurePrint - Send Files Securely',
-        onLogout: _handleLogout,
+      return const MyHomePage(
+        title: 'SecureX',
       );
     }
 
@@ -211,11 +352,9 @@ class MyHomePage extends StatefulWidget {
   const MyHomePage({
     super.key,
     required this.title,
-    required this.onLogout,
   });
 
   final String title;
-  final VoidCallback onLogout;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -231,12 +370,19 @@ class _MyHomePageState extends State<MyHomePage> {
   final UserService _userService = UserService();
   Timer? _statusCheckTimer;
 
+  static const List<String> _pageTitles = [
+    'SecureX',
+    'Upload File',
+    'Print Jobs',
+    'Settings',
+  ];
+
   // Placeholder pages
-  final List<Widget> _pages = const <Widget>[
-    HomePage(),
-    UploadPage(),
-    JobsPage(),
-    SettingsPage(),
+    final List<Widget> _pages = <Widget>[
+    HomePage(key: HomePage._homePageKey),
+    const UploadPage(),
+    const JobsPage(),
+    const SettingsPage(),
   ];
 
   @override
@@ -245,7 +391,8 @@ class _MyHomePageState extends State<MyHomePage> {
     // Initialize redirection on auth failure
     ApiService.onUnauthorized = () async {
       if (mounted) {
-        widget.onLogout();
+        // Find AuthWrapper state to logout
+        context.findAncestorStateOfType<_AuthWrapperState>()?._handleLogout();
       }
     };
       _initializeNotifications();
@@ -301,7 +448,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       // Only logout if it's a persistent issue or explicit 401
       if (e.message.contains('expired') || e.message.contains('invalid')) {
-        widget.onLogout();
+        if (mounted) {
+          context.findAncestorStateOfType<_AuthWrapperState>()?._handleLogout();
+        }
       } else {
         debugPrint(
             'DEBUG (MyHomePage): Transient auth error, not logging out yet');
@@ -326,7 +475,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     Widget scaffoldBody = Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text(_pageTitles[_selectedIndex]),
+        centerTitle: true,
         elevation: 0,
         actions: [
           // Notification button
@@ -335,7 +485,7 @@ class _MyHomePageState extends State<MyHomePage> {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
-            onPressed: widget.onLogout,
+            onPressed: () => context.findAncestorStateOfType<_AuthWrapperState>()?._handleLogout(),
           ),
           const SizedBox(width: 8),
         ],
@@ -370,25 +520,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
 
-    if (themeProvider.isGradientMode) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
-              Color(0xFFf093fb),
-              Color(0xFF4facfe),
-            ],
-            stops: [0.0, 0.3, 0.6, 1.0],
-          ),
-        ),
-        child: scaffoldBody,
-      );
-    }
-
     return scaffoldBody;
   }
 }
@@ -397,6 +528,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  static final GlobalKey<_HomePageState> _homePageKey = GlobalKey<_HomePageState>();
+
+  /// Call this to refresh recent files from anywhere
+  static void refreshRecentFiles() {
+    _homePageKey.currentState?._fetchRecentFiles();
+  }
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -494,12 +632,12 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Welcome to SecurePrint',
+            'Welcome to SecureX',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 16),
           const Text(
-            'Send files securely to your printer',
+            'Secure File Printing System',
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
           const SizedBox(height: 40),
@@ -771,19 +909,13 @@ class _SettingsPageState extends State<SettingsPage> {
           title: const Text('Theme'),
           trailing: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: themeProvider.isGradientMode
-                  ? 'Gradient'
-                  : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
+              value: themeProvider.isDarkMode ? 'Dark' : 'Light',
               onChanged: (String? newValue) {
                 if (newValue != null) {
-                  if (newValue == 'Gradient') {
-                    themeProvider.setTheme(AppTheme.gradient);
-                  } else {
-                    themeProvider.toggleTheme(newValue == 'Dark');
-                  }
+                  themeProvider.toggleTheme(newValue == 'Dark');
                 }
               },
-              items: <String>['Light', 'Dark', 'Gradient']
+              items: <String>['Light', 'Dark']
                   .map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -797,7 +929,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.lock_reset),
-          title: const Text('Reset Password'),
+          title: const Text('Change Password'),
           onTap: () {
             showDialog(
               context: context,
@@ -892,16 +1024,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: () {
             showDialog(
               context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('About'),
-                content: const Text('SecurePrint Mobile App v1.0.0'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
+              builder: (ctx) => const _AboutDialog(),
             );
           },
         ),

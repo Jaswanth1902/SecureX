@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum AppTheme { light, dark, gradient }
+enum AppTheme { light, dark }
 
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
@@ -11,7 +11,6 @@ class ThemeProvider with ChangeNotifier {
   AppTheme get appTheme => _appTheme;
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
-  bool get isGradientMode => _appTheme == AppTheme.gradient;
 
   ThemeProvider() {
     _loadTheme();
@@ -26,11 +25,7 @@ class ThemeProvider with ChangeNotifier {
 
   void setTheme(AppTheme theme) {
     _appTheme = theme;
-    if (theme == AppTheme.gradient) {
-      _themeMode = ThemeMode.light;
-    } else {
-      _themeMode = theme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
-    }
+    _themeMode = theme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
     _saveTheme(theme);
     notifyListeners();
   }
@@ -42,12 +37,7 @@ class ThemeProvider with ChangeNotifier {
       (e) => e.toString() == 'AppTheme.$themeString',
       orElse: () => AppTheme.light,
     );
-    if (_appTheme == AppTheme.gradient) {
-      _themeMode = ThemeMode.light;
-    } else {
-      _themeMode =
-          _appTheme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
-    }
+    _themeMode = _appTheme == AppTheme.dark ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }
 

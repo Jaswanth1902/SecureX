@@ -200,7 +200,7 @@ class _FileListScreenState extends State<FileListScreen> {
       try {
         final accessToken = await userService.getAccessToken();
         if (accessToken != null && accessToken.isNotEmpty) {
-          await apiService.deleteFile(fileId: fileIdStr, accessToken: accessToken);
+          await apiService.deleteFile(fileId: fileIdStr);
         }
       } catch (e) {
         // If server delete fails, continue with local dismissal so user doesn't keep seeing it.
@@ -235,11 +235,6 @@ class _FileListScreenState extends State<FileListScreen> {
     final secondaryTextColor = isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Files'),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null

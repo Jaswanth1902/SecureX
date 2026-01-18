@@ -28,14 +28,14 @@ class ProfileCard extends StatelessWidget {
     // Use exact purple-pink gradient as in screenshots for both themes
     final cardGradient = LinearGradient(
       colors: isDark
-          ? [Color(0xFF232526), Color(0xFF414345)] // deep purple/gray for dark
-          : [Color(0xFF7B2FF2), Color(0xFFf357a8)], // previous dark theme for light
+          ? [const Color(0xFF1E293B), const Color(0xFF0F172A)] // Deep navy/black for dark theme
+          : [const Color(0xFF7B2FF2), const Color(0xFFf357a8)], // Keep original colorful gradient for light theme
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     );
     final textColor = Colors.white;
     final subTextColor = Colors.white70;
-    final accentColor = isDark ? Color(0xFFf093fb) : Color(0xFFf093fb);
+    final accentColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFFf093fb);
 
     return Container(
       decoration: BoxDecoration(

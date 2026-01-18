@@ -664,20 +664,15 @@ class _UploadScreenState extends State<UploadScreen> {
     final headerIconColor = isDarkMode ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SecureX - Upload'),
-        centerTitle: true,
-        elevation: 0,
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // HEADER
+              // HEADER BOX
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: headerBgColor,
                   borderRadius: BorderRadius.circular(16),
@@ -695,19 +690,11 @@ class _UploadScreenState extends State<UploadScreen> {
                     Icon(Icons.folder_open, size: 48, color: headerIconColor),
                     const SizedBox(height: 12),
                     Text(
-                      '📂 Browse Your File',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: headerTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
                       'Select a file to upload',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: headerTextColor,
                       ),
                     ),
                   ],
