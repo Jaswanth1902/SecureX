@@ -12,6 +12,8 @@ import 'services/api_service.dart';
 
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
+import 'services/file_history_service.dart';
+import 'dart:io';
 import 'widgets/notification_dropdown.dart';
 import 'widgets/profile_info.dart';
 import 'widgets/reset_password_dialog.dart';
@@ -674,16 +676,37 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
       final response = await _apiService.listFiles(accessToken: accessToken);
 
       if (mounted) {
+        // Convert FileItem objects to Map for display
+        final serverFiles = response
+            .map((file) => {
+                  'file_id': file.fileId,
+                  'file_name': file.fileName,
+                  'file_size_bytes': file.fileSizeBytes,
+                  'uploaded_at': file.uploadedAt,
+                  'status': file.status,
+                })
+            .toList();
+
+        // Merge with local history so we can surface local-only metadata (like local_path)
+        final fileHistoryService = FileHistoryService();
+        final merged = await fileHistoryService.mergeWithServerFiles(serverFiles);
+        final filtered = await fileHistoryService.filterDismissedFiles(merged);
+
+        // Sort by uploaded_at desc and limit to last 10
+        filtered.sort((a, b) {
+          try {
+            final da = DateTime.parse(a['uploaded_at'] ?? '1970-01-01');
+            final db = DateTime.parse(b['uploaded_at'] ?? '1970-01-01');
+            return db.compareTo(da);
+          } catch (e) {
+            return 0;
+          }
+        });
+
+        final limited = filtered.take(10).toList();
+
         setState(() {
-          // Convert FileItem objects to Map for display
-          _files = response
-              .map((file) => {
-                'file_name': file.fileName,
-                'file_id': file.fileId,
-                'uploaded_at': file.uploadedAt,
-                'status': file.status,
-              })
-              .toList();
+          _files = limited;
           _isLoading = false;
         });
       }
@@ -736,11 +759,48 @@ class _RecentFilesSectionState extends State<RecentFilesSection> {
         final file = _files[index];
         final fileName = file['file_name'] ?? 'Unknown File';
         final uploadedAt = file['uploaded_at'] ?? 'N/A';
-        
+        final fileSize = file['file_size_bytes'];
+        final localPath = file['local_path'];
+
         return ListTile(
-          title: Text(fileName),
-          subtitle: Text('Uploaded: $uploadedAt'),
-          trailing: const Icon(Icons.file_present),
+          title: Text(fileName, overflow: TextOverflow.ellipsis),
+          subtitle: Text(fileSize != null
+              ? '${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB • Uploaded: $uploadedAt'
+              : 'Uploaded: $uploadedAt'),
+          trailing: IconButton(
+            icon: const Icon(Icons.cloud_upload),
+            tooltip: 'Upload again',
+            onPressed: () async {
+              // If we have a local path, try to load the file directly and open UploadScreen
+              if (localPath != null && localPath is String && localPath.isNotEmpty) {
+                final ioFile = File(localPath);
+                if (await ioFile.exists()) {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => UploadScreen(initialFilePath: localPath),
+                  ));
+                  return;
+                }
+              }
+
+              // Fallback: tell the user to pick the file (open Upload page)
+              final pick = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Upload Again'),
+                  content: const Text(
+                      'Local copy not found. You can browse to select the file again.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Browse')),
+                  ],
+                ),
+              );
+
+              if (pick == true) {
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UploadScreen()));
+              }
+            },
+          ),
         );
       },
     );

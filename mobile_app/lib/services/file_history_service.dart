@@ -21,6 +21,7 @@ class FileHistoryService {
     required int fileSizeBytes,
     required String uploadedAt,
     String status = 'WAITING_FOR_APPROVAL',
+    String? localPath,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -37,6 +38,7 @@ class FileHistoryService {
         'status': status,
         'status_updated_at': DateTime.now().toIso8601String(),
         'is_local_only': false,
+        if (localPath != null) 'local_path': localPath,
       };
       
       if (existingIndex >= 0) {

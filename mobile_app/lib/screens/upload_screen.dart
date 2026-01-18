@@ -23,7 +23,9 @@ import '../utils/operation_timeout.dart';
 import '../main.dart' show HomePage;
 
 class UploadScreen extends StatefulWidget {
-  const UploadScreen({super.key});
+  final String? initialFilePath;
+
+  const UploadScreen({super.key, this.initialFilePath});
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
@@ -33,6 +35,7 @@ class _UploadScreenState extends State<UploadScreen> {
   // State variables
   String? selectedFileName;
   int? selectedFileSize;
+  String? selectedFilePath;
   bool isEncrypting = false;
   bool isUploading = false;
   double uploadProgress = 0.0;
@@ -51,6 +54,33 @@ class _UploadScreenState extends State<UploadScreen> {
   // ========================================
   // REQUEST PERMISSIONS
   // ========================================
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFilePath != null) {
+      _loadInitialFile(widget.initialFilePath!);
+    }
+  }
+
+  Future<void> _loadInitialFile(String path) async {
+    try {
+      final ioFile = File(path);
+      if (await ioFile.exists()) {
+        final bytes = await ioFile.readAsBytes();
+        setState(() {
+          selectedFilePath = path;
+          selectedFileBytes = bytes;
+          selectedFileName = path.split(Platform.pathSeparator).last;
+          selectedFileSize = bytes.length;
+        });
+      } else {
+        debugPrint('Initial file path does not exist: $path');
+      }
+    } catch (e) {
+      debugPrint('Failed to load initial file: $e');
+    }
+  }
 
   Future<bool> requestPermissions() async {
     return await PermissionsService.requestAllFilePermissions();
@@ -120,6 +150,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
         if (fileBytes != null && fileBytes.isNotEmpty) {
           setState(() {
+            selectedFilePath = file.path;
             selectedFileName = file.name;
             selectedFileSize = file.size;
             selectedFileBytes = fileBytes;
@@ -408,6 +439,7 @@ class _UploadScreenState extends State<UploadScreen> {
           fileSizeBytes: encryptedData.length,
           uploadedAt: DateTime.now().toIso8601String(),
           status: 'WAITING_FOR_APPROVAL',
+          localPath: selectedFilePath,
         );
         debugPrint('📝 File saved to local history');
 
