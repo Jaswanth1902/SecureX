@@ -115,12 +115,12 @@ def login():
             'accessToken': access_token,
             'refreshToken': refresh_token,
             'user': {'id': user_id, 'phone': user_phone, 'full_name': user_name}
-        })
+        }), 200
 
     except Exception as e:
         conn.rollback()
         print(f"Login error: {e}")
-        return jsonify({'error': True, 'message': 'Login failed'}), 500
+        return jsonify({'error': 'Login failed', 'message': str(e)}), 500
     finally:
         cursor.close()
         release_db_connection(conn)

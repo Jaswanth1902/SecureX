@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'dart:async';
 import '../services/user_service.dart';
 import '../services/api_service.dart';
 import '../services/file_history_service.dart';
@@ -36,75 +38,68 @@ class _FileListScreenState extends State<FileListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFiles();
+    _fetchRecentFiles();
   }
 
-  Future<void> _loadFiles() async {
+  Future<void> _fetchRecentFiles() async {
     try {
       setState(() {
         isLoading = true;
         errorMessage = null;
       });
 
-      // Use stored token
-      String? accessToken = await userService.getAccessToken();
-      
-      if (accessToken == null) {
-        throw Exception('Not authenticated. Please log in first.');
-      }
-      
-      debugPrint('Using access token: ${accessToken.substring(0, 10)}...');
-
-      // Get user's files from API
-      final response = await http
-          .get(
-            Uri.parse('${apiService.baseUrl}/api/files'),
-            headers: {
-              'Authorization': 'Bearer $accessToken',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await http.get(
+        Uri.parse('${apiService.baseUrl}/api/files'),
+        headers: {
+          'Authorization': 'Bearer ${await userService.getAccessToken()}',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        var fileList = List<Map<String, dynamic>>.from(data['files']);
         
-        // Safely validate and cast files list
-        List<Map<String, dynamic>> validatedFiles = [];
-        try {
-          if (data['files'] is List) {
-            validatedFiles = (data['files'] as List)
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-          }
-        } catch (e) {
-          debugPrint('⚠️ Error validating files list: $e');
-          validatedFiles = [];
-        }
-        
-        // Merge with local history to detect rejected files
-        final mergedFiles = await fileHistoryService.mergeWithServerFiles(validatedFiles);
-        debugPrint('📝 Merged ${validatedFiles.length} server files with local history, total: ${mergedFiles.length}');
-        
-        // Filter out dismissed files (files user explicitly removed from history)
-        final filteredFiles = await fileHistoryService.filterDismissedFiles(mergedFiles);
-        debugPrint('🗑️ Filtered out ${mergedFiles.length - filteredFiles.length} dismissed files');
+        // Filter out any dismissed files so they don't reappear
+        final dismissedIds = await fileHistoryService.getDismissedFileIds();
+        fileList = fileList.where((f) => !dismissedIds.contains(f['file_id']?.toString())).toList();
         
         setState(() {
-          files = filteredFiles;
-          _applyFilter(); // Apply selected filter
+          files = fileList;
+          filteredFiles = files;
           isLoading = false;
         });
       } else {
-        throw Exception('Failed to load files: ${response.statusCode}');
+        throw Exception('Failed to load files');
       }
+    } on SocketException catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    } on TimeoutException catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    } catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    }
+  }
+
+  Future<void> _loadCachedFiles() async {
+    try {
+      final cachedFiles = await fileHistoryService.getLocalHistory();
+      setState(() {
+        files = cachedFiles;
+        filteredFiles = files;
+        isLoading = false;
+        errorMessage = null;
+      });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        files = [];
+        filteredFiles = [];
         isLoading = false;
+        errorMessage = null;
       });
-      debugPrint('❌ Error loading files: $e');
     }
   }
 
@@ -190,7 +185,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('File deleted')));
-                  _loadFiles();
+                  _fetchRecentFiles();
                 } else {
                   throw Exception('Delete failed');
                 }
@@ -210,27 +205,47 @@ class _FileListScreenState extends State<FileListScreen> {
 
   void _dismissRejectedFile(String fileId) async {
     try {
-      // Rejected files are already deleted from server
-      // Mark as dismissed so it doesn't reappear, and remove from local history
-      await fileHistoryService.markAsDismissed(fileId);
-      await fileHistoryService.removeFromHistory(fileId);
-      
+      final fileIdStr = fileId?.toString() ?? '';
+      if (fileIdStr.isEmpty) throw Exception('Invalid file id');
+
+      // Attempt to delete on server first (permanent deletion).
+      try {
+        final accessToken = await userService.getAccessToken();
+        if (accessToken != null && accessToken.isNotEmpty) {
+          await apiService.deleteFile(fileId: fileIdStr, accessToken: accessToken);
+        }
+      } catch (e) {
+        // If server delete fails, continue with local dismissal so user doesn't keep seeing it.
+        // The local dismissed list will prevent immediate reappearance.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Server delete failed: $e')));
+        }
+      }
+
+      // Mark dismissed locally and remove from local history/UI immediately
+      await fileHistoryService.markAsDismissed(fileIdStr);
+      await fileHistoryService.removeFromHistory(fileIdStr);
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('File dismissed from history')));
-      _loadFiles();
+      setState(() {
+        files.removeWhere((f) => (f['file_id']?.toString() ?? '') == fileIdStr);
+        filteredFiles.removeWhere((f) => (f['file_id']?.toString() ?? '') == fileIdStr);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File dismissed')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? const Color(0xFFF1F5F9) : const Color(0xFF111827);
+    final secondaryTextColor = isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Files'),
@@ -257,7 +272,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _loadFiles,
+                    onPressed: _fetchRecentFiles,
                     child: const Text('Retry'),
                   ),
                 ],
@@ -271,21 +286,16 @@ class _FileListScreenState extends State<FileListScreen> {
                   Icon(
                     Icons.folder_open,
                     size: 64,
-                    color: Colors.grey.shade400,
+                    color: isDarkMode ? const Color(0xFF475569) : Colors.grey.shade300,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No files yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to upload
-                      Navigator.pushNamed(context, '/upload');
-                    },
-                    icon: const Icon(Icons.upload),
-                    label: const Text('Upload a File'),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: secondaryTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -323,18 +333,22 @@ class _FileListScreenState extends State<FileListScreen> {
                               Icon(
                                 Icons.filter_list_off,
                                 size: 48,
-                                color: Colors.grey.shade400,
+                                color: isDarkMode ? const Color(0xFF475569) : Colors.grey.shade300,
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'No ${selectedFilter.toLowerCase()} files',
-                                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: secondaryTextColor,
+                                ),
                               ),
                             ],
                           ),
                         )
                       : RefreshIndicator(
-                          onRefresh: _loadFiles,
+                          onRefresh: _fetchRecentFiles,
                           child: ListView.builder(
                             itemCount: filteredFiles.length,
                             padding: const EdgeInsets.all(12),

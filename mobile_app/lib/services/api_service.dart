@@ -6,9 +6,30 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 
 class ApiService {
-  final String baseUrl = 'http://192.168.211.34:5000'; // Updated to current WiFi IP
+  // NOTE: IP Configuration for different environments:
+  // Device on same WiFi (192.168.0.X network):
+  static const String WIFI_IP = '192.168.0.103';
+  
+  // Device on Mobile Hotspot - Laptop IP on hotspot network
+  // Device on Mobile Hotspot - Laptop IP on hotspot network
+  // Updated to match local interface (discovered via ipconfig)
+  static const String HOTSPOT_IP = '192.168.38.34';
+  
+  // Device connected to Ethernet (192.168.56.X network):
+  static const String ETHERNET_IP = '192.168.56.1';
+  
+  // Android Emulator on same PC:
+  static const String EMULATOR_IP = '10.0.2.2';
+  
+  // Change this to use different network:
+  // WIFI_IP for local WiFi, HOTSPOT_IP for mobile hotspot, ETHERNET_IP for ethernet
+  static const String BACKEND_IP = HOTSPOT_IP;  // Using mobile hotspot (192.168.204.34)
+  static const int BACKEND_PORT = 5000;
+  
+  final String baseUrl = 'http://$BACKEND_IP:$BACKEND_PORT';
 
   // ========================================
   // USER REGISTRATION
@@ -21,6 +42,9 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/auth/register');
+      print('🔄 Registering to: $url');
+      print('📦 Payload: phone=$phone, fullName=$fullName');
+      
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -31,17 +55,29 @@ class ApiService {
         }),
       );
 
+      print('📨 Response Status: ${response.statusCode}');
+      print('📨 Response Body: ${response.body}');
+
       if (response.statusCode == 201) {
         final json = jsonDecode(response.body);
         return RegisterResponse.fromJson(json);
       } else {
-        final json = jsonDecode(response.body);
-        throw ApiException(
-          json['message'] ?? 'Registration failed: ${response.statusCode}',
-          response.statusCode,
-        );
+        try {
+          final json = jsonDecode(response.body);
+          final errorMsg = json['error'] ?? json['message'] ?? 'Registration failed: ${response.statusCode}';
+          print('❌ Error from backend: $errorMsg');
+          throw ApiException(
+            errorMsg is String ? errorMsg : 'Registration failed: ${response.statusCode}',
+            response.statusCode,
+          );
+        } catch (e) {
+          if (e is ApiException) rethrow;
+          print('❌ Failed to parse error response: $e');
+          throw ApiException('Registration failed: ${response.statusCode}', response.statusCode);
+        }
       }
     } catch (e) {
+      print('❌ Registration exception: $e');
       if (e is ApiException) rethrow;
       throw ApiException('Registration error: $e', -1);
     }
@@ -57,26 +93,47 @@ class ApiService {
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/auth/login');
-      final response = await http.post(
+      print('🔄 Logging in to: $url');
+      print('📦 Payload: phone=$phone');
+      
+      // Apply a short timeout so the UI can respond quickly on network issues
+      final response = await http
+          .post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'phone': phone,
           'password': password,
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 6));
+
+      print('📨 Response Status: ${response.statusCode}');
+      print('📨 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         return LoginResponse.fromJson(json);
       } else {
-        final json = jsonDecode(response.body);
-        throw ApiException(
-          json['message'] ?? 'Login failed: ${response.statusCode}',
-          response.statusCode,
-        );
+        try {
+          final json = jsonDecode(response.body);
+          final errorMsg = json['error'] ?? json['message'] ?? 'Login failed: ${response.statusCode}';
+          print('❌ Error from backend: $errorMsg');
+          throw ApiException(
+            errorMsg is String ? errorMsg : 'Login failed: ${response.statusCode}',
+            response.statusCode,
+          );
+        } catch (e) {
+          if (e is ApiException) rethrow;
+          print('❌ Failed to parse error response: $e');
+          throw ApiException('Login failed: ${response.statusCode}', response.statusCode);
+        }
       }
+    } on TimeoutException catch (e) {
+      print('❌ Login timeout: $e');
+      throw ApiException('Login timed out. Please check your network and try again.', -1);
     } catch (e) {
+      print('❌ Login exception: $e');
       if (e is ApiException) rethrow;
       throw ApiException('Login error: $e', -1);
     }
