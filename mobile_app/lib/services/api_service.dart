@@ -6,11 +6,17 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 
 class ApiService {
   // NOTE: IP Configuration for different environments:
   // Device on same WiFi (192.168.0.X network):
   static const String WIFI_IP = '192.168.0.103';
+  
+  // Device on Mobile Hotspot - Laptop IP on hotspot network
+  // Device on Mobile Hotspot - Laptop IP on hotspot network
+  // Updated to match local interface (discovered via ipconfig)
+  static const String HOTSPOT_IP = '192.168.38.34';
   
   // Device connected to Ethernet (192.168.56.X network):
   static const String ETHERNET_IP = '192.168.56.1';
@@ -18,8 +24,9 @@ class ApiService {
   // Android Emulator on same PC:
   static const String EMULATOR_IP = '10.0.2.2';
   
-  // Currently using WiFi IP - change to ETHERNET_IP if device is on that network
-  static const String BACKEND_IP = WIFI_IP;
+  // Change this to use different network:
+  // WIFI_IP for local WiFi, HOTSPOT_IP for mobile hotspot, ETHERNET_IP for ethernet
+  static const String BACKEND_IP = HOTSPOT_IP;  // Using mobile hotspot (192.168.204.34)
   static const int BACKEND_PORT = 5000;
   
   final String baseUrl = 'http://$BACKEND_IP:$BACKEND_PORT';
@@ -89,14 +96,17 @@ class ApiService {
       print('🔄 Logging in to: $url');
       print('📦 Payload: phone=$phone');
       
-      final response = await http.post(
+      // Apply a short timeout so the UI can respond quickly on network issues
+      final response = await http
+          .post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'phone': phone,
           'password': password,
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 6));
 
       print('📨 Response Status: ${response.statusCode}');
       print('📨 Response Body: ${response.body}');
@@ -119,6 +129,9 @@ class ApiService {
           throw ApiException('Login failed: ${response.statusCode}', response.statusCode);
         }
       }
+    } on TimeoutException catch (e) {
+      print('❌ Login timeout: $e');
+      throw ApiException('Login timed out. Please check your network and try again.', -1);
     } catch (e) {
       print('❌ Login exception: $e');
       if (e is ApiException) rethrow;

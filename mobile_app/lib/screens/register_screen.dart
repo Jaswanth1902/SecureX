@@ -253,16 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Login link (outside the card)
-                  GestureDetector(
-                    onTap: widget.onHaveAccount,
-                    child: Text(
-                      'Already have an account? Login here',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: buttonColor, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-
                   const SizedBox(height: 24),
                 ],
               ),
