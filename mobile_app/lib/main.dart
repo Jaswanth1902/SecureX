@@ -420,6 +420,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
     
     Widget scaffoldBody = Scaffold(
       appBar: AppBar(
@@ -479,59 +480,10 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
 
-    if (themeProvider.isGradientMode) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667EEA),
-              Color(0xFF764BA2),
-              Color(0xFFF093FB),
-              Color(0xFF4FD1E4),
-            ],
-            stops: [0.0, 0.33, 0.66, 1.0],
-          ),
-        ),
-        child: scaffoldBody,
-      );
-    } else if (themeProvider.isDarkMode) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0F172A),
-              const Color(0xFF1A2744),
-              const Color(0xFF0F172A).withOpacity(0.95),
-              const Color(0xFF1E2B3D),
-            ],
-            stops: const [0.0, 0.33, 0.66, 1.0],
-          ),
-        ),
-        child: scaffoldBody,
-      );
-    } else {
-      // Light theme - apply subtle light gradient
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF8FBFF),
-              Color(0xFFEFF6FF),
-              Color(0xFFF0F9FF),
-              Color(0xFFFAFCFF),
-            ],
-            stops: [0.0, 0.33, 0.66, 1.0],
-          ),
-        ),
-        child: scaffoldBody,
-      );
-    }
+    return Container(
+      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FBFF),
+      child: scaffoldBody,
+    );
   }
 }
 
@@ -539,6 +491,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  static final GlobalKey<_RecentFilesSectionState> _recentFilesKey = GlobalKey<_RecentFilesSectionState>();
+  
+  /// Call this to refresh recent files from anywhere
+  static void refreshRecentFiles() {
+    _recentFilesKey.currentState?.refreshFiles();
+  }
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -640,24 +599,6 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFFAFBFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
-                    ),
-                  ),
-                  child: Text(
-                    '🔐 Your files are encrypted with AES-256-GCM. Send securely to your printer.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: secondaryTextColor,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -673,39 +614,133 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          RecentFilesSection(files: []),
+          RecentFilesSection(key: HomePage._recentFilesKey),
         ],
       ),
     );
   }
 }
 
-class RecentFilesSection extends StatelessWidget {
-  final List<Map<String, dynamic>> files;
+class RecentFilesSection extends StatefulWidget {
+  const RecentFilesSection({super.key});
 
-  const RecentFilesSection({required this.files, Key? key}) : super(key: key);
+  @override
+  State<RecentFilesSection> createState() => _RecentFilesSectionState();
+}
+
+class _RecentFilesSectionState extends State<RecentFilesSection> {
+  final ApiService _apiService = ApiService();
+  final UserService _userService = UserService();
+  List<Map<String, dynamic>> _files = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFiles();
+  }
+
+  Future<void> _loadFiles() async {
+    try {
+      await _fetchRecentFiles();
+    } catch (e) {
+      debugPrint('Error loading files: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Public method to refresh files (called after successful upload)
+  Future<void> refreshFiles() async {
+    await _loadFiles();
+  }
+
+  Future<void> _fetchRecentFiles() async {
+    try {
+      final accessToken = await _userService.getAccessToken();
+      if (accessToken == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _files = [];
+          });
+        }
+        return;
+      }
+
+      final response = await _apiService.listFiles(accessToken: accessToken);
+
+      if (mounted) {
+        setState(() {
+          // Convert FileItem objects to Map for display
+          _files = response
+              .map((file) => {
+                'file_name': file.fileName,
+                'file_id': file.fileId,
+                'uploaded_at': file.uploadedAt,
+                'status': file.status,
+              })
+              .toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching recent files: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _files = [];
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (files.isEmpty) {
+    final isDark = Provider.of<ThemeProvider>(context).isDarkMode;
+    final secondaryTextColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF4B5563);
+
+    if (_isLoading) {
+      return Center(
+        child: SizedBox(
+          height: 40,
+          width: 40,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_files.isEmpty) {
       return Text(
-        'No recent files available.',
+        'No files uploaded yet.',
         style: TextStyle(
           fontSize: 16,
-          color: Colors.grey,
+          color: secondaryTextColor,
         ),
       );
     }
 
     return ListView.builder(
       shrinkWrap: true,
-      itemCount: files.length,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _files.length,
       itemBuilder: (context, index) {
-        final file = files[index];
+        final file = _files[index];
+        final fileName = file['file_name'] ?? 'Unknown File';
+        final uploadedAt = file['uploaded_at'] ?? 'N/A';
+        
         return ListTile(
-          title: Text(file['file_name'] ?? 'Unknown File'),
-          subtitle: Text('Uploaded at: ${file['uploaded_at'] ?? 'N/A'}'),
-          trailing: Icon(Icons.file_present),
+          title: Text(fileName),
+          subtitle: Text('Uploaded: $uploadedAt'),
+          trailing: const Icon(Icons.file_present),
         );
       },
     );
@@ -725,8 +760,23 @@ class UploadPage extends StatelessWidget {
         Provider<EncryptionService>.value(value: encryptionService),
         Provider<ApiService>.value(value: apiService),
       ],
-      child: const UploadScreen(),
+      child: UploadScreenWrapper(onUploadSuccess: () {
+        // Refresh recent files after successful upload
+        HomePage.refreshRecentFiles();
+      }),
     );
+  }
+}
+
+/// Wrapper widget that catches upload success and notifies listeners
+class UploadScreenWrapper extends StatelessWidget {
+  final VoidCallback? onUploadSuccess;
+  
+  const UploadScreenWrapper({this.onUploadSuccess, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const UploadScreen();
   }
 }
 
@@ -815,7 +865,7 @@ class SettingsPage extends StatelessWidget {
           dividerColor: dividerColor,
           icon: Icons.lock_reset,
           iconColor: const Color(0xFF3B82F6),
-          title: 'Reset Password',
+          title: 'Change Password',
           subtitle: 'Update your password',
           context: context,
           textColor: textColor,
@@ -974,21 +1024,15 @@ class SettingsPage extends StatelessWidget {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: themeProvider.isGradientMode
-                    ? 'Gradient'
-                    : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
+                value: themeProvider.isDarkMode ? 'Dark' : 'Light',
                 onChanged: (String? newValue) {
                   if (newValue != null) {
-                    if (newValue == 'Gradient') {
-                      themeProvider.setTheme(AppTheme.gradient);
-                    } else {
-                      themeProvider.toggleTheme(newValue == 'Dark');
-                    }
+                    themeProvider.toggleTheme(newValue == 'Dark');
                   }
                 },
                 dropdownColor: cardColor,
                 icon: const Icon(Icons.expand_more, size: 20),
-                items: <String>['Light', 'Dark', 'Gradient']
+                items: <String>['Light', 'Dark']
                     .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -1131,14 +1175,8 @@ class _AboutDialog extends StatelessWidget {
                 color: textColor,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Securing the file is priority',
-              style: TextStyle(
-                fontSize: 13,
-                color: secondaryTextColor,
-              ),
-            ),
+            
+            
             const SizedBox(height: 16),
 
             // Version

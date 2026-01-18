@@ -83,7 +83,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Reset Password',
+                      'Change Password',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

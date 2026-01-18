@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'dart:async';
 import '../services/user_service.dart';
 import '../services/api_service.dart';
 import '../services/file_history_service.dart';
@@ -52,7 +54,7 @@ class _FileListScreenState extends State<FileListScreen> {
           'Authorization': 'Bearer ${await userService.getAccessToken()}',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -64,10 +66,33 @@ class _FileListScreenState extends State<FileListScreen> {
       } else {
         throw Exception('Failed to load files');
       }
+    } on SocketException catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    } on TimeoutException catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    } catch (e) {
+      // Load cached files instead of showing error
+      await _loadCachedFiles();
+    }
+  }
+
+  Future<void> _loadCachedFiles() async {
+    try {
+      final cachedFiles = await fileHistoryService.getLocalHistory();
+      setState(() {
+        files = cachedFiles;
+        filteredFiles = files;
+        isLoading = false;
+        errorMessage = null;
+      });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        files = [];
+        filteredFiles = [];
         isLoading = false;
+        errorMessage = null;
       });
     }
   }

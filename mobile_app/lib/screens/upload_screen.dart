@@ -20,6 +20,7 @@ import '../services/connectivity_service.dart';
 import '../services/public_key_trust_service.dart';
 import '../utils/secure_logger.dart';
 import '../utils/operation_timeout.dart';
+import '../main.dart' show HomePage;
 
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -422,6 +423,9 @@ class _UploadScreenState extends State<UploadScreen> {
         // Show success dialog
         if (mounted) {
           _showSuccessDialog(fileId, fileName);
+          
+          // Refresh recent files for this user
+          HomePage.refreshRecentFiles();
         }
       } else {
         throw Exception(
