@@ -138,18 +138,19 @@ def list_files():
 
     try:
         if role == 'user':
-            # Include REJECTED files even if deleted, so mobile app can show rejection status
+            # Only include non-deleted files for user listing. Rejected files will be returned
+            # only when present and not deleted. Deleted files should not reappear after deletion.
             query = """SELECT f.id, f.file_name, f.file_size_bytes, f.created_at, f.is_printed, f.printed_at, f.status, f.status_updated_at, f.rejection_reason, u.phone
                        FROM files f
                        LEFT JOIN users u ON f.user_id = u.id
-                       WHERE (f.is_deleted = 0 OR f.status = 'REJECTED') AND f.user_id = ? ORDER BY f.created_at DESC LIMIT 100"""
+                       WHERE f.is_deleted = 0 AND f.user_id = ? ORDER BY f.created_at DESC LIMIT 100"""
             cursor.execute(query, (user_id,))
         elif role == 'owner':
-            # Include REJECTED files even if deleted, so desktop app can show rejection status
+            # Owner view: only show non-deleted files assigned to this owner.
             query = """SELECT f.id, f.file_name, f.file_size_bytes, f.created_at, f.is_printed, f.printed_at, f.status, f.status_updated_at, f.rejection_reason, u.phone
                        FROM files f
                        LEFT JOIN users u ON f.user_id = u.id
-                       WHERE (f.is_deleted = 0 OR f.status = 'REJECTED') AND f.owner_id = ? ORDER BY f.created_at DESC LIMIT 100"""
+                       WHERE f.is_deleted = 0 AND f.owner_id = ? ORDER BY f.created_at DESC LIMIT 100"""
             cursor.execute(query, (user_id,))
         else:
             return jsonify({'error': 'Invalid role'}), 403
@@ -272,8 +273,17 @@ def delete_file(file_id):
         else:
             return jsonify({'error': 'Invalid role'}), 403
         
+        # If already deleted, return success (idempotent delete)
         if row[2]:
-             return jsonify({'error': 'File already deleted'}), 400
+            print(f"File already deleted (idempotent): {file_id}")
+            return jsonify({
+                'success': True,
+                'file_id': file_id,
+                'file_name': row[4],
+                'status': 'ALREADY_DELETED',
+                'deleted_at': '',
+                'message': 'File was already deleted'
+            }), 200
 
         current_status = row[3]
         file_name = row[4]
@@ -292,17 +302,25 @@ def delete_file(file_id):
             print(f"File deleted, preserving status: {current_status}")
 
         elif current_status in ['APPROVED', 'REJECTED']:
-            # Delete but DO NOT mark as printed (unless it was already printed? but APPROVED/REJECTED implies not yet printed in new flow)
-            # Actually if it was REJECTED, it definitely wasn't printed.
-            # If it was APPROVED, in new flow it transitions to BEING_PRINTED then PRINT_COMPLETED. 
-            # So APPROVED means it wasn't printed yet.
-            cursor.execute("""
-                UPDATE files 
-                SET is_deleted = 1, deleted_at = ?
-                WHERE id = ?
-            """, (deleted_at, file_id))
-            final_status = current_status
-            print(f"File deleted, preserving status: {current_status}")
+            # Mark file as deleted and set status appropriately
+            # REJECTED files are set to CANCELLED so they won't reappear in list
+            if current_status == 'REJECTED':
+                cursor.execute("""
+                    UPDATE files
+                    SET is_deleted = 1, deleted_at = ?, status = 'CANCELLED', status_updated_at = ?
+                    WHERE id = ?
+                """, (deleted_at, deleted_at, file_id))
+                final_status = 'CANCELLED'
+                print(f"File marked deleted (REJECTED → CANCELLED): {file_id}")
+            else:
+                # APPROVED: preserve status but mark deleted
+                cursor.execute("""
+                    UPDATE files 
+                    SET is_deleted = 1, deleted_at = ?
+                    WHERE id = ?
+                """, (deleted_at, file_id))
+                final_status = current_status
+                print(f"File deleted, preserving status: {current_status}")
         else:
             # Set to CANCELLED for other statuses
             cursor.execute("""

@@ -163,7 +163,9 @@ class FileHistoryService {
       }
     }
     
-    return result;
+    // Exclude any files the user has explicitly dismissed so they don't reappear
+    final filtered = await filterDismissedFiles(result);
+    return filtered;
   }
 
   
@@ -176,9 +178,9 @@ class FileHistoryService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final history = await getLocalHistory();
-      
-      history.removeWhere((f) => f['file_id'] == fileId);
-      
+      final fileIdStr = fileId.toString();
+      history.removeWhere((f) => (f['file_id']?.toString() ?? '') == fileIdStr);
+
       await prefs.setString(_historyKey, jsonEncode(history));
     } catch (e) {
       print('Failed to remove file from history: $e');
@@ -221,9 +223,9 @@ class FileHistoryService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final dismissedList = await getDismissedFileIds();
-      
-      if (!dismissedList.contains(fileId)) {
-        dismissedList.add(fileId);
+      final fileIdStr = fileId.toString();
+      if (!dismissedList.contains(fileIdStr)) {
+        dismissedList.add(fileIdStr);
         await prefs.setStringList(_dismissedFilesKey, dismissedList);
       }
     } catch (e) {
