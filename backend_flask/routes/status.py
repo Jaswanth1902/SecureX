@@ -100,6 +100,16 @@ def update_file_status(file_id):
             "rejection_reason": rejection_reason
         })
         
+        # Also notify the uploader (user) about status changes, especially rejections
+        if user_id:
+            sse_manager.publish(str(user_id), "file_status_changed", {
+                "file_id": file_id,
+                "file_name": file_name,
+                "status": new_status,
+                "updated_at": status_updated_at,
+                "rejection_reason": rejection_reason
+            })
+        
         return jsonify({
             'success': True,
             'file_id': file_id,
