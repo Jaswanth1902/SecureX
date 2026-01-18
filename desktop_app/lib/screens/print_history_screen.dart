@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/file_history_service.dart'; // Import
 import '../services/theme_service.dart';
+import '../models/history_item.dart'; // Import Model
 import '../widgets/glass_dialog.dart';
 import '../widgets/file_icon.dart';
 
@@ -34,13 +36,11 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
     });
 
     try {
-      final authService = context.read<AuthService>();
-      final apiService = context.read<ApiService>();
-      
-      final history = await apiService.getHistory(authService.accessToken!);
+      // Load from Local History Service
+      final historyItems = await context.read<FileHistoryService>().getHistory();
       
       setState(() {
-        _history = history;
+        _history = historyItems;
       });
     } catch (e) {
       if (!mounted) return;
@@ -72,10 +72,8 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
     if (confirm != true) return;
 
     try {
-      final authService = context.read<AuthService>();
-      final apiService = context.read<ApiService>();
-      
-      await apiService.clearHistory(authService.accessToken!);
+      // Clear Local History
+      await context.read<FileHistoryService>().clearHistory();
       
       setState(() {
         _history = [];
@@ -378,19 +376,14 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
       );
     }
 
-    String _formatDate(String dateStr) {
-        try {
-            final dt = DateTime.parse(dateStr);
-            final now = DateTime.now();
-            final diff = now.difference(dt);
-            
-            if (diff.inDays == 0) return 'Today';
-            if (diff.inDays == 1) return 'Yesterday';
-            if (diff.inDays < 7) return '${diff.inDays} days ago';
-            return 'Last week'; 
-        } catch (_) {
-            return 'Unknown date';
-        }
+    String _formatDate(DateTime dt) {
+        final now = DateTime.now();
+        final diff = now.difference(dt);
+        
+        if (diff.inDays == 0) return 'Today';
+        if (diff.inDays == 1) return 'Yesterday';
+        if (diff.inDays < 7) return '${diff.inDays} days ago';
+        return 'Last week'; 
     }
 
     return Container(
@@ -445,7 +438,7 @@ class _PrintHistoryScreenState extends State<PrintHistoryScreen> {
                     if (isDark) ...[
                         const SizedBox(height: 4),
                         Text(
-                            '${(item.fileSizeBytes / 1024).toStringAsFixed(1)} KB • ${_formatDate(item.uploadedAt)}',
+                            '${(item.fileSizeBytes / 1024).toStringAsFixed(1)} KB • ${_formatDate(item.uploadedAtDateTime)}',
                             style: const TextStyle(
                                 color: Color(0xFF9CA3AF),
                                 fontSize: 13,

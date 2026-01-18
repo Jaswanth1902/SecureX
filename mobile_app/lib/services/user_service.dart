@@ -4,14 +4,16 @@
 // ========================================
 
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/api_service.dart'; // To access dynamic baseUrl
 
 class UserService {
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _userIdKey = 'user_id';
   static const _phoneKey = 'user_phone';
-  static const _fullNameKey = 'full_name';
+  static const _fullNameKey = 'user_full_name';
 
   final _storage = const FlutterSecureStorage();
 
@@ -25,7 +27,7 @@ class UserService {
     required String refreshToken,
     required String userId,
     required String phone,
-    required String fullName,
+    String? fullName,
   }) async {
     try {
       await Future.wait([
@@ -33,7 +35,7 @@ class UserService {
         _storage.write(key: _refreshTokenKey, value: refreshToken),
         _storage.write(key: _userIdKey, value: userId),
         _storage.write(key: _phoneKey, value: phone),
-        _storage.write(key: _fullNameKey, value: fullName),
+        if (fullName != null) _storage.write(key: _fullNameKey, value: fullName),
       ]);
     } catch (e) {
       throw Exception('Failed to save tokens: $e');
@@ -144,4 +146,104 @@ class UserService {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     return now >= expTime;
   }
+  
+  // ========================================
+  // ACCOUNT MANAGEMENT
+  // ========================================
+
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    final token = await getAccessToken();
+    if (token == null) return false;
+
+    try {
+      // Use ApiService instance to get correct platform-specific URL
+      final apiService = ApiService(); 
+      final baseUrl = apiService.baseUrl;
+      
+      final url = Uri.parse('$baseUrl/api/auth/change-password');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      // debugPrint('Change Password Error: $e');
+      return false;
+    }
+  }
+  Future<bool> sendFeedback(String message) async {
+    final token = await getAccessToken();
+    if (token == null) return false;
+
+    try {
+      final apiService = ApiService(); 
+      final baseUrl = apiService.baseUrl;
+      
+      final url = Uri.parse('$baseUrl/api/auth/feedback');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'message': message,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Update user profile
+  Future<bool> updateProfile(String fullName) async {
+    final token = await getAccessToken();
+    if (token == null) return false;
+
+    try {
+      final apiService = ApiService();
+      final baseUrl = apiService.baseUrl;
+
+      final url = Uri.parse('$baseUrl/api/auth/update-profile');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'full_name': fullName,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Update local storage
+        await _storage.write(key: _fullNameKey, value: fullName);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 }
+
+

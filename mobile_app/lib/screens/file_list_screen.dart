@@ -1,19 +1,18 @@
 // ========================================
-// MOBILE APP - FILE LIST SCREEN
-// Displays user's uploaded files
+// MOBILE APP - FILE LIST SCREEN (JOBS)
+// Displays user's uploaded files with grouped history
 // ========================================
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import '../services/user_service.dart';
 import '../services/api_service.dart';
 import '../services/file_history_service.dart';
+import '../widgets/glass_container.dart';
 import 'print_screen.dart';
-
-// ========================================
-// FILE LIST SCREEN
-// ========================================
+import '../utils/constants.dart';
 
 class FileListScreen extends StatefulWidget {
   const FileListScreen({super.key});
@@ -31,7 +30,7 @@ class _FileListScreenState extends State<FileListScreen> {
   List<Map<String, dynamic>> filteredFiles = [];
   bool isLoading = true;
   String? errorMessage;
-  String selectedFilter = 'ALL'; // Filter: ALL, WAITING, APPROVED, REJECTED, COMPLETED
+  String selectedFilter = 'ALL'; // Filter: ALL, WAITING, APPROVED, REJECTED, PRINTED
 
   @override
   void initState() {
@@ -53,8 +52,6 @@ class _FileListScreenState extends State<FileListScreen> {
         throw Exception('Not authenticated. Please log in first.');
       }
       
-      debugPrint('Using access token: ${accessToken.substring(0, 10)}...');
-
       // Get user's files from API
       final response = await http
           .get(
@@ -69,7 +66,6 @@ class _FileListScreenState extends State<FileListScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Safely validate and cast files list
         List<Map<String, dynamic>> validatedFiles = [];
         try {
           if (data['files'] is List) {
@@ -85,49 +81,58 @@ class _FileListScreenState extends State<FileListScreen> {
         
         // Merge with local history to detect rejected files
         final mergedFiles = await fileHistoryService.mergeWithServerFiles(validatedFiles);
-        debugPrint('📝 Merged ${validatedFiles.length} server files with local history, total: ${mergedFiles.length}');
         
-        // Filter out dismissed files (files user explicitly removed from history)
-        final filteredFiles = await fileHistoryService.filterDismissedFiles(mergedFiles);
-        debugPrint('🗑️ Filtered out ${mergedFiles.length - filteredFiles.length} dismissed files');
+        // Filter out dismissed files
+        final activeFiles = await fileHistoryService.filterDismissedFiles(mergedFiles);
         
-        setState(() {
-          files = filteredFiles;
-          _applyFilter(); // Apply selected filter
-          isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            files = activeFiles;
+            _applyFilter();
+            isLoading = false;
+          });
+        }
       } else {
         throw Exception('Failed to load files: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString();
+          isLoading = false;
+        });
+      }
       debugPrint('❌ Error loading files: $e');
     }
   }
 
   void _applyFilter() {
-    if (selectedFilter == 'ALL') {
-      filteredFiles = files;
-    } else {
-      filteredFiles = files.where((file) {
-        final status = file['status'] ?? '';
-        switch (selectedFilter) {
-          case 'WAITING':
-            return status == 'WAITING_FOR_APPROVAL';
-          case 'APPROVED':
-            return status == 'APPROVED';
-          case 'REJECTED':
-            return status == 'REJECTED';
-          case 'COMPLETED':
-            return status == 'PRINT_COMPLETED';
-          default:
-            return true;
-        }
-      }).toList();
-    }
+    setState(() {
+      if (selectedFilter == 'ALL') {
+        filteredFiles = List.from(files);
+      } else {
+        filteredFiles = files.where((file) {
+          final status = file['status'] ?? '';
+          switch (selectedFilter) {
+            case 'WAITING':
+              return status == 'WAITING_FOR_APPROVAL';
+            case 'PRINTED':
+              return status == 'PRINT_COMPLETED' || status == 'BEING_PRINTED'; // Simplify 'Printed' tab
+            case 'REJECTED':
+              return status == 'REJECTED';
+            default:
+              return true;
+          }
+        }).toList();
+      }
+      
+      // Sort by upload time descending
+      filteredFiles.sort((a, b) {
+        final dateA = DateTime.tryParse(a['uploaded_at'] ?? '') ?? DateTime(2000);
+        final dateB = DateTime.tryParse(b['uploaded_at'] ?? '') ?? DateTime(2000);
+        return dateB.compareTo(dateA);
+      });
+    });
   }
 
   void _changeFilter(String filter) {
@@ -137,399 +142,429 @@ class _FileListScreenState extends State<FileListScreen> {
     });
   }
 
-  void _openFile(String fileId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PrintScreen(fileId: fileId)),
-    );
-  }
+  // Group files by date (Today, Yesterday, Older)
+  Map<String, List<Map<String, dynamic>>> _groupFilesByDate(List<Map<String, dynamic>> filesToGroup) {
+    final grouped = <String, List<Map<String, dynamic>>>{
+      'Today': [],
+      'Yesterday': [],
+      'Older': [],
+    };
 
-  /// Safely format file ID for display: truncate to 8 chars with ellipsis or show placeholder
-  String _formatFileId(dynamic fileId) {
-    if (fileId == null || fileId.toString().isEmpty) {
-      return 'No ID';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    for (var file in filesToGroup) {
+      final uploadedAtStr = file['uploaded_at'];
+      if (uploadedAtStr != null) {
+        final date = DateTime.tryParse(uploadedAtStr)?.toLocal(); // Convert to local time
+        if (date != null) {
+          final fileDate = DateTime(date.year, date.month, date.day);
+          if (fileDate == today) {
+            grouped['Today']!.add(file);
+          } else if (fileDate == yesterday) {
+            grouped['Yesterday']!.add(file);
+          } else {
+            grouped['Older']!.add(file);
+          }
+        } else {
+          grouped['Older']!.add(file);
+        }
+      } else {
+        grouped['Older']!.add(file);
+      }
     }
-    final idStr = fileId.toString();
-    if (idStr.length <= 8) {
-      return idStr;
-    }
-    return '${idStr.substring(0, 8)}...';
+    
+    // Remove empty groups
+    grouped.removeWhere((key, value) => value.isEmpty);
+    
+    return grouped;
   }
 
   void _deleteFile(String fileId) async {
-    showDialog(
+    // Show confirmation dialog before deleting/cancelling
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete File?'),
-        content: const Text('This action cannot be undone.'),
+        title: const Text('Cancel Request?'),
+        content: const Text('Are you sure you want to cancel this print request?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final accessToken = await userService.getAccessToken();
-                if (accessToken == null) throw Exception('Not authenticated');
-
-                final response = await http
-                    .post(
-                      Uri.parse('${apiService.baseUrl}/api/delete/$fileId'),
-                      headers: {
-                        'Authorization': 'Bearer $accessToken',
-                        'Content-Type': 'application/json',
-                      },
-                    )
-                    .timeout(const Duration(seconds: 10));
-
-                if (response.statusCode == 200) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('File deleted')));
-                  _loadFiles();
-                } else {
-                  throw Exception('Delete failed');
-                }
-              } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
         ],
       ),
     );
+
+    if (confirm != true) return;
+
+    try {
+      final accessToken = await userService.getAccessToken();
+      if (accessToken == null) throw Exception('Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('${apiService.baseUrl}/api/delete/$fileId'),
+        headers: {'Authorization': 'Bearer $accessToken'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled')));
+        _loadFiles();
+      } else {
+        throw Exception('Cancel failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   void _dismissRejectedFile(String fileId) async {
     try {
-      // Rejected files are already deleted from server
-      // Mark as dismissed so it doesn't reappear, and remove from local history
       await fileHistoryService.markAsDismissed(fileId);
       await fileHistoryService.removeFromHistory(fileId);
-      
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('File dismissed from history')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File dismissed')));
       _loadFiles();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      // ignore
     }
   }
+  
+  // -- UI Helpers --
 
+  Color _getStatusColor(String status) {
+    if (status == 'WAITING_FOR_APPROVAL') return Colors.orange.shade300;
+    if (status == 'APPROVED') return Colors.blue.shade300;
+    if (status == 'PRINT_COMPLETED') return Colors.green.shade300;
+    if (status == 'REJECTED') return Colors.red.shade300;
+    return Colors.grey.shade300;
+  }
+  
+  Color _getStatusBgColor(String status) {
+    if (status == 'WAITING_FOR_APPROVAL') return Colors.orange.withOpacity(0.2);
+    if (status == 'APPROVED') return Colors.blue.withOpacity(0.2);
+    if (status == 'PRINT_COMPLETED') return Colors.green.withOpacity(0.2);
+    if (status == 'REJECTED') return Colors.red.withOpacity(0.2);
+    return Colors.grey.withOpacity(0.2);
+  }
+
+  String _getStatusText(String status) {
+    if (status == 'WAITING_FOR_APPROVAL') return 'Waiting';
+    if (status == 'APPROVED') return 'Approved';
+    if (status == 'BEING_PRINTED') return 'Printing';
+    if (status == 'PRINT_COMPLETED') return 'Printed';
+    if (status == 'REJECTED') return 'Rejected';
+    return status.replaceAll('_', ' ');
+  }
+
+  // Get file icon based on extension (simple heuristic)
+  Widget _getFileIcon(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    IconData icon;
+    Color color;
+
+    if (['pdf'].contains(ext)) {
+      icon = Icons.picture_as_pdf;
+      color = Colors.orange.shade400; // Reference uses orange for PDF
+    } else if (['doc', 'docx'].contains(ext)) {
+      icon = Icons.description;
+      color = Colors.blue.shade400;
+    } else if (['jpg', 'jpeg', 'png'].contains(ext)) {
+      icon = Icons.image;
+      color = Colors.red.shade400;
+    } else if (['xls', 'xlsx'].contains(ext)) {
+      icon = Icons.table_chart;
+      color = Colors.green.shade400;
+    } else {
+      icon = Icons.insert_drive_file;
+      color = Colors.grey.shade400;
+    }
+
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Icon(icon, color: color.withOpacity(0.8), size: 24),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Group files
+    final groupedFiles = _groupFilesByDate(filteredFiles);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Files'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Colors.red.shade600,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error: $errorMessage',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loadFiles,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
-          : files.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.folder_open,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No files yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to upload
-                      Navigator.pushNamed(context, '/upload');
-                    },
-                    icon: const Icon(Icons.upload),
-                    label: const Text('Upload a File'),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                // Filter chips
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('ALL', 'All', Icons.list),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('WAITING', 'Waiting', Icons.hourglass_empty),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('APPROVED', 'Approved', Icons.thumb_up),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('REJECTED', 'Rejected', Icons.cancel),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('COMPLETED', 'Completed', Icons.check_circle),
-                      ],
-                    ),
-                  ),
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: Navigator.canPop(context) 
+              ? IconButton(
+                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 32),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                )
+              : null,
+          centerTitle: true,
+          title: const Text(
+            'File History',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search, color: Colors.white, size: 28),
+              onPressed: () {
+                // Search functionality to be implemented
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Search coming soon')));
+              },
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Filter Chips
+             Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip('ALL', 'All'),
+                    const SizedBox(width: 12),
+                    _buildFilterChip('WAITING', 'Waiting for approval'),
+                    const SizedBox(width: 12),
+                    _buildFilterChip('PRINTED', 'Printed'),
+                    const SizedBox(width: 12),
+                    _buildFilterChip('REJECTED', 'Rejected'),
+                  ],
                 ),
-                const Divider(height: 1),
-                // File list
-                Expanded(
-                  child: filteredFiles.isEmpty
+              ),
+            ),
+            
+            // File List content
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : errorMessage != null
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.filter_list_off,
-                                size: 48,
-                                color: Colors.grey.shade400,
-                              ),
+                              const Icon(Icons.error_outline, color: Colors.white, size: 48),
                               const SizedBox(height: 16),
-                              Text(
-                                'No ${selectedFilter.toLowerCase()} files',
-                                style: const TextStyle(fontSize: 16, color: Colors.grey),
-                              ),
+                              Text(errorMessage!, style: const TextStyle(color: Colors.white)),
+                              TextButton(
+                                onPressed: _loadFiles,
+                                child: const Text('Retry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              )
                             ],
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _loadFiles,
-                          child: ListView.builder(
-                            itemCount: filteredFiles.length,
-                            padding: const EdgeInsets.all(12),
-                            itemBuilder: (context, index) {
-                              final file = filteredFiles[index];
-                  final status = file['status'] ?? 'UNKNOWN';
-                  final rejectionReason = file['rejection_reason'];
-                  
-                  // Status color and icon mapping
-                  Color statusColor;
-                  IconData statusIcon;
-                  switch (status) {
-                    case 'WAITING_FOR_APPROVAL':
-                      statusColor = Colors.orange;
-                      statusIcon = Icons.hourglass_empty;
-                      break;
-                    case 'APPROVED':
-                      statusColor = Colors.blue;
-                      statusIcon = Icons.thumb_up;
-                      break;
-                    case 'BEING_PRINTED':
-                      statusColor = Colors.purple;
-                      statusIcon = Icons.print;
-                      break;
-                    case 'PRINT_COMPLETED':
-                      statusColor = Colors.green;
-                      statusIcon = Icons.check_circle;
-                      break;
-                    case 'REJECTED':
-                      statusColor = Colors.red;
-                      statusIcon = Icons.cancel;
-                      break;
-                    case 'CANCELLED':
-                      statusColor = Colors.grey;
-                      statusIcon = Icons.cancel_outlined;
-                      break;
-                    default:
-                      statusColor = Colors.grey;
-                      statusIcon = Icons.help_outline;
-                  }
-                  
-                  String statusText = status.toString().replaceAll('_', ' ');
-                  
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // File name and icon row
-                          Row(
-                            children: [
-                              Icon(statusIcon, color: statusColor, size: 28),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  file['file_name'] ?? 'Unknown',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                      : groupedFiles.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.folder_open, size: 64, color: Colors.white.withOpacity(0.5)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No files found',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 18),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                ],
                               ),
-                              // Cancel button for pending files
-                              if (status == 'WAITING_FOR_APPROVAL' || status == 'APPROVED')
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.red),
-                                  tooltip: 'Cancel Request',
-                                  onPressed: () => _deleteFile(file['file_id'] ?? ''),
-                                ),
-                              // Dismiss button for ALL rejected files - deletes from server
-                              if (status == 'REJECTED')
-                                IconButton(
-                                  icon: const Icon(Icons.visibility_off, color: Colors.grey),
-                                  tooltip: 'Dismiss',
-                                  onPressed: () => _dismissRejectedFile(file['file_id'] ?? ''),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Status badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: statusColor, width: 1),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _loadFiles,
+                              child: ListView(
+                                padding: const EdgeInsets.all(16),
+                                children: groupedFiles.entries.map((entry) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8, bottom: 12, top: 4),
+                                        child: Text(
+                                          entry.key, // Today / Yesterday / Older
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            shadows: [Shadow(color: Colors.black26, blurRadius: 2)],
+                                          ),
+                                        ),
+                                      ),
+                                      ...entry.value.map((file) => _buildFileItem(file)),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  );
+                                }).toList(),
                               ),
                             ),
-                          ),
-                          // Rejection reason if rejected
-                          if (status == 'REJECTED' && rejectionReason != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Reason: $rejectionReason',
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          // File size
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Size: ${((file['file_size_bytes'] ?? 0) / 1024).toStringAsFixed(1)} KB',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
             ),
-                  ),
-                ],
-              ),
+          ],
+        ),
     );
   }
 
-  Widget _buildFilterChip(String filterValue, String label, IconData icon) {
-    final isSelected = selectedFilter == filterValue;
+  Widget _buildFilterChip(String filterKey, String label) {
+    final isSelected = selectedFilter == filterKey;
+    return GestureDetector(
+      onTap: () => _changeFilter(filterKey),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected ? Colors.white.withOpacity(0.4) : Colors.white.withOpacity(0.1),
+          ),
+          boxShadow: isSelected ? [
+             BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))
+          ] : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white.withOpacity(0.9),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileItem(Map<String, dynamic> file) {
+    final status = file['status'] ?? '';
+    final fileName = file['file_name'] ?? 'Unknown';
+    final sizeBytes = file['file_size_bytes'] ?? 0;
+    final uploadedAtStr = file['uploaded_at'];
     
-    // Count files for this filter
-    int count;
-    if (filterValue == 'ALL') {
-      count = files.length;
-    } else {
-      count = files.where((file) {
-        final status = file['status'] ?? '';
-        switch (filterValue) {
-          case 'WAITING':
-            return status == 'WAITING_FOR_APPROVAL';
-          case 'APPROVED':
-            return status == 'APPROVED';
-          case 'REJECTED':
-            return status == 'REJECTED';
-          case 'COMPLETED':
-            return status == 'PRINT_COMPLETED';
-          default:
-            return false;
-        }
-      }).length;
+    // Format Time
+    String timeStr = '';
+    if (uploadedAtStr != null) {
+      final date = DateTime.tryParse(uploadedAtStr)?.toLocal();
+      if (date != null) {
+        timeStr = DateFormat('hh:mm a').format(date);
+      }
     }
-    
-    return FilterChip(
-      selected: isSelected,
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey.shade700),
-          const SizedBox(width: 6),
-          Text(label),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.white.withOpacity(0.3) : Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Colors.grey.shade700,
+
+    // Format Size
+    String sizeStr = '';
+    if (sizeBytes < 1024 * 1024) {
+      sizeStr = '${(sizeBytes / 1024).toStringAsFixed(0)} KB';
+    } else {
+      sizeStr = '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+
+    return Dismissible(
+      key: Key(file['file_id'].toString()),
+      direction: status == 'REJECTED' ? DismissDirection.endToStart : DismissDirection.none,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red.withOpacity(0.5),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (_) => _dismissRejectedFile(file['file_id']),
+      child: GlassContainer(
+        padding: const EdgeInsets.all(16),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          // Action on tap? maybe show details or print screen if approved
+        },
+        child: Row(
+          children: [
+            _getFileIcon(fileName),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        sizeStr,
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: CircleAvatar(radius: 2, backgroundColor: Colors.white.withOpacity(0.4)),
+                      ),
+                      Text(
+                        timeStr,
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-      onSelected: (selected) {
-        if (selected) {
-          _changeFilter(filterValue);
-        }
-      },
-      selectedColor: Colors.blue,
-      backgroundColor: Colors.grey.shade200,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.grey.shade800,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(width: 8),
+            // Status Badge
+            if (status == 'WAITING_FOR_APPROVAL') // Allow Cancel
+              GestureDetector(
+                onTap: () => _deleteFile(file['file_id']),
+                 child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _getStatusBgColor(status),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      'Waiting',
+                      style: TextStyle(
+                        color: _getStatusColor(status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                 ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _getStatusBgColor(status),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
+                ),
+                child: Text(
+                  _getStatusText(status),
+                  style: TextStyle(
+                    color: _getStatusColor(status),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
+

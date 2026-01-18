@@ -6,6 +6,7 @@ import 'services/api_service.dart';
 import 'services/encryption_service.dart';
 import 'services/key_service.dart';
 import 'services/notification_service.dart';
+import 'services/file_history_service.dart';
 import 'services/theme_service.dart';
 import 'screens/login_screen.dart';
 
@@ -46,6 +47,7 @@ class SafeCopyDesktopApp extends StatelessWidget {
           dispose: (_, service) => service.dispose(),
         ),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => FileHistoryService()),
       ],
       child: MaterialApp(
         title: 'SafeCopy Owner Client',

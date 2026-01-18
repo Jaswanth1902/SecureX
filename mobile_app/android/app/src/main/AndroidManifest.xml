@@ -14,9 +14,9 @@
         <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     
     <application
-        android:label="secure_print_user"
+        android:label="Secure X"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

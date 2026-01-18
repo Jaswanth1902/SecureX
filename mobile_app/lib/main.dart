@@ -7,19 +7,26 @@ import 'screens/upload_screen.dart';
 import 'screens/file_list_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/home_screen.dart'; 
+import 'screens/settings_screen.dart';
 import 'services/encryption_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/user_service.dart';
-import 'widgets/notification_dropdown.dart';
-import 'widgets/profile_info.dart';
-import 'widgets/reset_password_dialog.dart';
-import 'providers/theme_provider.dart';
+import 'services/theme_provider.dart';
+import 'services/file_history_service.dart'; // Import FileHistoryService
+import 'utils/constants.dart';
 
 // Secure File Printing System - User Mobile App
 // Main entry point for the Flutter mobile application
 
-void main() {
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/splash_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -33,33 +40,29 @@ class SecurePrintUserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return MaterialApp(
-      title: 'SecurePrint - User',
-      themeMode: themeProvider.themeMode,
-      theme: themeProvider.isGradientMode
-          ? ThemeData(
-              primarySwatch: Colors.purple,
-              useMaterial3: true,
-              brightness: Brightness.light,
-              scaffoldBackgroundColor: Colors.transparent,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-              ),
-            )
-          : ThemeData(
-              primarySwatch: Colors.blue,
-              useMaterial3: true,
-              brightness: Brightness.light,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'SecureX',
+          theme: ThemeData(
+            primarySwatch: Colors.pink,
+            useMaterial3: true,
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.teal,
+            useMaterial3: true,
+            scaffoldBackgroundColor: Colors.transparent, 
+            inputDecorationTheme: const InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.black26, 
             ),
-      darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
-      home: const AuthWrapper(),
+          ),
+          themeMode: themeProvider.themeMode,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
@@ -113,8 +116,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_isAuthenticated) {
-      return MyHomePage(
-        title: 'SecurePrint - Send Files Securely',
+      return MainLayout(
         onLogout: _handleLogout,
       );
     }
@@ -175,36 +177,27 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({
+class MainLayout extends StatefulWidget {
+  const MainLayout({
     super.key,
-    required this.title,
     required this.onLogout,
   });
 
-  final String title;
   final VoidCallback onLogout;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 0;
-  
-  // Notification service
+class _MainLayoutState extends State<MainLayout> {
+  // Notification service & API logic
   final NotificationService _notificationService = NotificationService();
   final ApiService _apiService = ApiService();
   final UserService _userService = UserService();
+  final FileHistoryService _fileHistoryService = FileHistoryService(); // Local History
   Timer? _statusCheckTimer;
-
-  // Placeholder pages
-  final List<Widget> _pages = const <Widget>[
-    HomePage(),
-    UploadPage(),
-    JobsPage(),
-    SettingsPage(),
-  ];
+  int _currentIndex = 1; // Start at Home (middle page)
+  late final PageController _pageController = PageController(initialPage: 1);
 
   @override
   void initState() {
@@ -216,17 +209,16 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _statusCheckTimer?.cancel();
     _notificationService.dispose();
+    _pageController.dispose(); // Dispose the PageController
     super.dispose();
   }
 
   Future<void> _initializeNotifications() async {
     await _notificationService.initialize();
-    // Start periodic status checks (every 30 seconds)
     _statusCheckTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _checkFileStatuses(),
     );
-    // Check immediately on startup
     _checkFileStatuses();
   }
 
@@ -235,7 +227,6 @@ class _MyHomePageState extends State<MyHomePage> {
       String? accessToken = await _userService.getAccessToken();
       
       if (accessToken == null) {
-        debugPrint('No access token - user not authenticated');
         return;
       }
       
@@ -250,12 +241,15 @@ class _MyHomePageState extends State<MyHomePage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['files'] is List) {
-          final files = (data['files'] as List)
+          final serverFiles = (data['files'] as List)
               .whereType<Map>()
               .map((item) => Map<String, dynamic>.from(item))
               .toList();
           
-          await _notificationService.checkForStatusUpdates(files);
+          // Merge with Local History to detect REJECTED files (missing from server)
+          final mergedFiles = await _fileHistoryService.mergeWithServerFiles(serverFiles);
+
+          await _notificationService.checkForStatusUpdates(mergedFiles);
         }
       }
     } catch (e) {
@@ -263,150 +257,79 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // Refresh notifications when switching to Jobs tab
-    if (index == 2) {
-      _checkFileStatuses();
-    }
-  }
+  String? _selectedFilePath;
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    
-    Widget scaffoldBody = Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        elevation: 0,
-        actions: [
-          // Notification button
-          NotificationDropdown(notificationService: _notificationService),
-          // Logout button
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: widget.onLogout,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Center(
-        child: _pages.elementAt(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.upload_file),
-            label: 'Upload',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Jobs',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-      ),
-    );
-
-    if (themeProvider.isGradientMode) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
-              Color(0xFFf093fb),
-              Color(0xFF4facfe),
+    return PopScope(
+      canPop: _currentIndex == 1, // Can pop only if on Home screen (index 1)
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          return;
+        }
+        // If not on Home screen, navigate to Home
+        _pageController.animateToPage(
+          1, // Home Index
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(gradient: AppConstants.getBackgroundGradient(context)),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            children: [
+              // Index 0: History
+              const JobsPage(),
+              
+              // Index 1: Home
+              HomeScreen(
+                onLogout: widget.onLogout,
+                notificationService: _notificationService,
+                onTabSwitchRequested: (index) {
+                  _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                onFileSelectedForUpload: (path) {
+                  setState(() {
+                    _selectedFilePath = path;
+                  });
+                  _pageController.animateToPage(
+                    2, // Upload Index
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                  );
+                },
+              ),
+              
+              // Index 2: Upload
+              UploadPage(filePath: _selectedFilePath),
             ],
-            stops: [0.0, 0.3, 0.6, 1.0],
           ),
         ),
-        child: scaffoldBody,
-      );
-    }
-    
-    return scaffoldBody;
-  }
-}
-
-// Placeholder pages - To be implemented
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  final UserService _userService = UserService();
-  String? _userName;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserName();
-  }
-
-  Future<void> _loadUserName() async {
-    final fullName = await _userService.getFullName();
-    if (mounted) {
-      setState(() {
-        _userName = fullName;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const Icon(Icons.security, size: 64, color: Colors.blue),
-          const SizedBox(height: 24),
-          Text(
-            _userName != null ? 'Hi $_userName' : 'Hi',
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Welcome to SecurePrint',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Send files securely to your printer',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-        ],
       ),
     );
   }
 }
 
+// Helper Wrappers for direct navigation from Home
 class UploadPage extends StatelessWidget {
-  const UploadPage({super.key});
+  final String? filePath;
+  const UploadPage({super.key, this.filePath});
 
   @override
   Widget build(BuildContext context) {
+    // Only used correctly wrapping providers
     final encryptionService = EncryptionService();
     final apiService = ApiService();
 
@@ -415,7 +338,7 @@ class UploadPage extends StatelessWidget {
         Provider<EncryptionService>.value(value: encryptionService),
         Provider<ApiService>.value(value: apiService),
       ],
-      child: const UploadScreen(),
+      child: UploadScreen(initialFilePath: filePath),
     );
   }
 }
@@ -427,67 +350,5 @@ class JobsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Import and use the FileListScreen which shows file status
     return const FileListScreen();
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        const Text(
-          'Settings',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 24),
-        const ProfileInfo(),
-        const SizedBox(height: 24),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.brightness_6),
-          title: const Text('Theme'),
-          trailing: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: themeProvider.isGradientMode
-                  ? 'Gradient'
-                  : (themeProvider.isDarkMode ? 'Dark' : 'Light'),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  if (newValue == 'Gradient') {
-                    themeProvider.setTheme(AppTheme.gradient);
-                  } else {
-                    themeProvider.toggleTheme(newValue == 'Dark');
-                  }
-                }
-              },
-              items: <String>['Light', 'Dark', 'Gradient']
-                  .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.lock_reset),
-          title: const Text('Reset Password'),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (context) => const ResetPasswordDialog(),
-            );
-          },
-        ),
-      ],
-    );
   }
 }

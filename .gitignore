@@ -1,76 +1,48 @@
 ## Root .gitignore for SafeCopy
 
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-Thumbs.db
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
 # Node modules
 node_modules/
 
-# Backend coverage
+# Backend coverage reports (generated artifacts)
 backend/coverage/
 backend/coverage/**
+
+# Coverage artifacts added by test tools
+# Remove generated lcov and nyc outputs from VCS
 lcov.info
 .nyc_output/
 **/lcov-report/
 
+# OS files
+.DS_Store
+Thumbs.db
+
 # IDE
-*.iml
-*.ipr
-*.iws
-.idea/
 .vscode/
+.idea/
 
 # Environment files
-backend/.env
+
 .env
-env/
-.venv/
-venv/
 
 # Build outputs
 dist/
 build/
-/build/
-**/build/
 
 # Python
 __pycache__/
 *.pyc
+venv/
+.venv/
+env/
+.env
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/coverage/
-**/ephemeral/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio
-/android/app/debug
-/android/app/profile
-/android/app/release
 
 # Database
 *.sqlite
 *.db
 backend_flask/database.sqlite
+
+# Flutter Build
+**/build/
+**/ephemeral/

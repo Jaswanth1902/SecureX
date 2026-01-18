@@ -20,6 +20,7 @@ class FileHistoryService {
     required String fileName,
     required int fileSizeBytes,
     required String uploadedAt,
+    String? localPath,
     String status = 'WAITING_FOR_APPROVAL',
   }) async {
     try {
@@ -35,7 +36,8 @@ class FileHistoryService {
         'file_size_bytes': fileSizeBytes,
         'uploaded_at': uploadedAt,
         'status': status,
-        'status_updated_at': DateTime.now().toIso8601String(),
+        'local_path': localPath,
+        'status_updated_at': DateTime.now().toUtc().toIso8601String(),
         'is_local_only': false,
       };
       
@@ -89,7 +91,7 @@ class FileHistoryService {
       final index = history.indexWhere((f) => f['file_id'] == fileId);
       if (index >= 0) {
         history[index]['status'] = newStatus;
-        history[index]['status_updated_at'] = DateTime.now().toIso8601String();
+        history[index]['status_updated_at'] = DateTime.now().toUtc().toIso8601String();
         if (rejectionReason != null) {
           history[index]['rejection_reason'] = rejectionReason;
         }
@@ -138,16 +140,36 @@ class FileHistoryService {
             await updateFileStatus(fileId, serverStatus);
           }
         }
+      } else {
+        // File is MISSING from server
+        // This means it was Hard Deleted by the backend (e.g., REJECTED or CANCELLED)
+        // If it was waiting for approval, we should mark it as REJECTED so the user knows.
+        if (localFile['status'] == 'WAITING_FOR_APPROVAL') {
+           await updateFileStatus(fileId, 'REJECTED', rejectionReason: 'File removed from server (Rejected)');
+        }
       }
-      // Note: If file is missing from server, we keep the local status unchanged
-      // This allows files to stay in WAITING_FOR_APPROVAL until the server explicitly updates them
     }
     
     // Get updated local history
     final updatedHistory = await getLocalHistory();
     
     // Create result list: start with server files (includes REJECTED files now)
-    final result = List<Map<String, dynamic>>.from(serverFiles);
+    // Create result list: start with server files but PREFER local 'uploaded_at'
+    final result = <Map<String, dynamic>>[];
+
+    for (final serverFile in serverFiles) {
+      final fileId = serverFile['file_id'];
+      final localFileIndex = updatedHistory.indexWhere((f) => f['file_id'] == fileId);
+      
+      if (localFileIndex >= 0) {
+        // We have local history for this file, prefer local 'uploaded_at'
+        final merged = Map<String, dynamic>.from(serverFile);
+        merged['uploaded_at'] = updatedHistory[localFileIndex]['uploaded_at'];
+        result.add(merged);
+      } else {
+        result.add(serverFile);
+      }
+    }
     
     // Add locally-tracked REJECTED files that aren't in server response
     // (files that were removed from server completely, not just marked REJECTED)

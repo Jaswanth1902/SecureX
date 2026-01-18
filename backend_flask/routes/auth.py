@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from auth_utils import hash_password, check_password, generate_tokens, hash_token, token_required
+from flask import Blueprint, request, jsonify, g
 from db import get_db_connection, release_db_connection
-from auth_utils import hash_password, check_password, generate_tokens, hash_token
 import datetime
 import uuid
 
@@ -125,53 +125,106 @@ def login():
         cursor.close()
         release_db_connection(conn)
 
-@auth_bp.route('/reset-password', methods=['POST'])
-def reset_password():
+@auth_bp.route('/change-password', methods=['POST'])
+@token_required
+def change_password():
     data = request.get_json()
-    phone = data.get('phone')
-    old_password = data.get('old_password')
+    current_password = data.get('current_password')
     new_password = data.get('new_password')
-
-    if not phone or not old_password or not new_password:
-        return jsonify({'error': 'phone, old_password, and new_password required'}), 400
-
+    
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current and new password required'}), 400
+        
     conn = get_db_connection()
     cursor = conn.cursor()
-
     try:
-        # Verify user and old password
-        cursor.execute("SELECT id, password_hash FROM users WHERE phone = ?", (phone,))
-        user = cursor.fetchone()
-
-        if not user or not check_password(old_password, user[1]):
-            return jsonify({'error': 'Invalid credentials'}), 401
-
-        user_id = user[0]
-        new_hashed_password = hash_password(new_password)
-
-        # Update password
-        cursor.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
-            (new_hashed_password, user_id)
-        )
-
-        # Invalidate all existing sessions for security
-        cursor.execute(
-            "UPDATE sessions SET is_valid = 0 WHERE user_id = ?",
-            (user_id,)
-        )
-
+        user_id = g.user['sub']
+        
+        # Verify current password
+        cursor.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,))
+        result = cursor.fetchone()
+        if not result or not check_password(current_password, result[0]):
+            return jsonify({'error': 'Invalid current password'}), 401
+            
+        # Update with new password
+        new_hash = hash_password(new_password)
+        cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
         conn.commit()
-
-        return jsonify({
-            'success': True,
-            'message': 'Password updated successfully. Please login again.'
-        })
-
+        
+        return jsonify({'success': True, 'message': 'Password updated successfully'})
     except Exception as e:
         conn.rollback()
-        print(f"Reset password error: {e}")
-        return jsonify({'error': True, 'message': 'Password reset failed'}), 500
+        print(f"Change Password Error: {e}")
+        return jsonify({'error': True, 'message': 'Update failed'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+
+@auth_bp.route('/feedback', methods=['POST'])
+@token_required
+def send_feedback():
+    data = request.get_json()
+    message = data.get('message')
+    
+    if not message:
+        return jsonify({'error': 'Message required'}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        user_id = g.user['sub']
+        
+        # Ensure table exists (minimal schema)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                message TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Insert feedback
+        feedback_id = str(uuid.uuid4())
+        cursor.execute(
+            "INSERT INTO feedback (id, user_id, message) VALUES (?, ?, ?)",
+            (feedback_id, user_id, message)
+        )
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Feedback sent'})
+    except Exception as e:
+        conn.rollback()
+        print(f"Feedback Error: {e}")
+        return jsonify({'error': True, 'message': 'Failed to send feedback'}), 500
+    finally:
+        cursor.close()
+        release_db_connection(conn)
+
+
+@auth_bp.route('/update-profile', methods=['POST'])
+@token_required
+def update_profile():
+    data = request.get_json()
+    new_name = data.get('full_name')
+    
+    if not new_name:
+        return jsonify({'error': 'Full name required'}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        user_id = g.user['sub']
+        
+        # Update user profile
+        cursor.execute("UPDATE users SET full_name = ? WHERE id = ?", (new_name, user_id))
+        conn.commit()
+        
+        return jsonify({'success': True, 'message': 'Profile updated successfully'})
+    except Exception as e:
+        conn.rollback()
+        print(f"Update Profile Error: {e}")
+        return jsonify({'error': True, 'message': 'Update failed'}), 500
     finally:
         cursor.close()
         release_db_connection(conn)

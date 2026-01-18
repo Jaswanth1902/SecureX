@@ -31,14 +31,7 @@ class _FileCardState extends State<FileCard> {
 
     String timeAgo = 'Uploaded recently';
     try {
-      // Backend returns UTC but without 'Z' (e.g. 2023-12-08T10:00:00)
-      // We must treat it as UTC then convert to Local
-      var dateStr = widget.file.uploadedAt;
-      if (!dateStr.endsWith('Z')) {
-        dateStr += 'Z';
-      }
-      
-      final dt = DateTime.parse(dateStr).toLocal();
+      final dt = widget.file.uploadedAtDateTime;
       final diff = DateTime.now().difference(dt);
       
       if (diff.inHours < 1) {

@@ -20,17 +20,74 @@ import '../services/connectivity_service.dart';
 import '../services/public_key_trust_service.dart';
 import '../utils/secure_logger.dart';
 import '../utils/operation_timeout.dart';
+import '../widgets/glass_container.dart';
+import '../widgets/dashed_border_container.dart';
+import '../utils/constants.dart';
 
 class UploadScreen extends StatefulWidget {
-  const UploadScreen({super.key});
+  final String? initialFilePath;
+  const UploadScreen({super.key, this.initialFilePath});
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
 }
 
 class _UploadScreenState extends State<UploadScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFilePath != null) {
+      // Small delay to ensure everything is initialized
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _loadInitialFile(widget.initialFilePath!);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(UploadScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilePath != null && widget.initialFilePath != oldWidget.initialFilePath) {
+      _loadInitialFile(widget.initialFilePath!);
+    }
+  }
+
+  Future<void> _loadInitialFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        final fileName = path.split(Platform.pathSeparator).last;
+        final fileSize = await file.length();
+
+        if (mounted) {
+          setState(() {
+            selectedFileName = fileName;
+            selectedFilePath = path;
+            selectedFileSize = fileSize;
+            selectedFileBytes = bytes;
+            errorMessage = null;
+          });
+        }
+      } else {
+        debugPrint('⚠️ Initial file not found: $path');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not find "$path". Please select it manually.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading initial file: $e');
+    }
+  }
+
   // State variables
   String? selectedFileName;
+  String? selectedFilePath;
   int? selectedFileSize;
   bool isEncrypting = false;
   bool isUploading = false;
@@ -120,6 +177,7 @@ class _UploadScreenState extends State<UploadScreen> {
         if (fileBytes != null && fileBytes.isNotEmpty) {
           setState(() {
             selectedFileName = file.name;
+            selectedFilePath = file.path;
             selectedFileSize = file.size;
             selectedFileBytes = fileBytes;
             errorMessage = null;
@@ -405,7 +463,8 @@ class _UploadScreenState extends State<UploadScreen> {
           fileId: fileId,
           fileName: fileName,
           fileSizeBytes: encryptedData.length,
-          uploadedAt: DateTime.now().toIso8601String(),
+          uploadedAt: DateTime.now().toUtc().toIso8601String(),
+          localPath: selectedFilePath,
           status: 'WAITING_FOR_APPROVAL',
         );
         debugPrint('📝 File saved to local history');
@@ -483,6 +542,65 @@ class _UploadScreenState extends State<UploadScreen> {
       ),
     );
   }
+
+  // ========================================
+  // KEY VERIFICATION DIALOG (TOFU)
+  // ========================================
+
+  Future<bool?> _showKeyVerificationDialog(
+    KeyVerificationResult verification,
+    String ownerId,
+  ) async {
+    final isKeyChanged = verification.reason == KeyVerificationReason.keyChanged;
+    
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(isKeyChanged ? Icons.warning_amber : Icons.security,
+                color: isKeyChanged ? Colors.red : Colors.blue, size: 28),
+              const SizedBox(width: 12),
+              Expanded(child: Text(isKeyChanged ? 'Security Warning' : 'Verify Owner Identity',
+                style: TextStyle(color: isKeyChanged ? Colors.red : null, fontWeight: FontWeight.bold))),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(verification.message, style: const TextStyle(fontSize: 15)),
+                const SizedBox(height: 16),
+                Text('Owner ID:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(ownerId, style: const TextStyle(fontSize: 14, fontFamily: 'monospace')),
+                const SizedBox(height: 12),
+                Text('Key Fingerprint:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
+                  child: Text(verification.shortFingerprint, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: isKeyChanged ? Colors.orange : Colors.blue),
+              child: Text(isKeyChanged ? 'Trust Anyway' : 'Trust & Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   // ========================================
   // GET MIME TYPE
@@ -651,389 +769,280 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SecurePrint - Upload File'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false, // Ensure no back button
+          // leading: IconButton(...) removed
+          centerTitle: false,
+          toolbarHeight: 0, // Hiding standard AppBar to build custom header in body
+        ),
+        body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // HEADER
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.security, size: 48, color: Colors.blue.shade600),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Secure File Upload',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Your file will be encrypted before uploading',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+               // Custom Header
+               Padding(
+                 padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                      // Back button removed as this is a top-level tab
+                      const SizedBox(height: 10),
+                     const SizedBox(height: 24),
+                     const Text(
+                       'Upload Files',
+                       style: TextStyle(
+                         fontSize: 28,
+                         fontWeight: FontWeight.bold,
+                         color: Colors.white,
+                         letterSpacing: -0.5,
+                       ),
+                     ),
+                     const SizedBox(height: 4),
+                     const Text(
+                       'Select documents for secure printing',
+                       style: TextStyle(
+                         fontSize: 16,
+                         color: Colors.white70,
+                         fontWeight: FontWeight.w500,
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
 
-              // FILE SELECTION SECTION
-              if (selectedFileName == null || uploadedFileId == null)
-                Column(
-                  children: [
-                    // File picker button
-                    ElevatedButton.icon(
-                      onPressed: isEncrypting || isUploading ? null : pickFile,
-                      icon: const Icon(Icons.attach_file),
-                      label: const Text('Select File'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                          horizontal: 32,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Selected file info
-                    if (selectedFileName != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          border: Border.all(color: Colors.green.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: Colors.green.shade600,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
+              // Scrollable Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      // Upload Drop Zone
+                      GlassContainer(
+                        padding: EdgeInsets.zero,
+                        borderRadius: BorderRadius.circular(24),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: DashedBorderContainer(
+                            onTap: isEncrypting || isUploading ? null : pickFile,
+                            color: Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(16),
+                            child: SizedBox(
+                              height: 180,
+                              width: double.infinity,
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    selectedFileName!,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      overflow: TextOverflow.ellipsis,
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                    ),
+                                    child: const Icon(
+                                      Icons.cloud_upload_rounded,
+                                      color: Colors.white,
+                                      size: 32,
                                     ),
                                   ),
-                                  Text(
-                                    '${(selectedFileSize! / 1024 / 1024).toStringAsFixed(2)} MB',
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'Tap to Upload',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Supports PDF, DOCX',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Selected File List
+                      if (selectedFileName != null) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Selected File',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              ),
+                              child: const Text(
+                                '1 File',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    const SizedBox(height: 16),
-
-                    // Upload button
-                    if (selectedFileName != null)
-                      ElevatedButton(
-                        onPressed: isEncrypting || isUploading
-                            ? null
-                            : encryptAndUploadFile,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: isEncrypting || isUploading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
+                        const SizedBox(height: 12),
+                        GlassContainer(
+                          padding: const EdgeInsets.all(16),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                                 ),
-                              )
-                            : const Text(
-                                'Encrypt & Upload',
-                                style: TextStyle(fontSize: 16),
+                                child: const Icon(
+                                  Icons.description, // 'picture_as_pdf' equivalent
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
-                      ),
-                  ],
-                ),
-
-              // PROGRESS SECTION
-              if (isEncrypting || isUploading || uploadStatus != null)
-                Column(
-                  children: [
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            uploadStatus ?? 'Processing...',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: isEncrypting ? null : uploadProgress,
-                              minHeight: 8,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${(uploadProgress * 100).toStringAsFixed(0)}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-              // SUCCESS SECTION
-              if (uploadedFileId != null)
-                Column(
-                  children: [
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade300),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 48,
-                            color: Colors.green.shade600,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Upload Complete!',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Your file is encrypted and stored on the server.',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: SelectableText(
-                              uploadedFileId!,
-                              style: const TextStyle(
-                                fontFamily: 'Courier',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      selectedFileName!,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${(selectedFileSize! / 1024 / 1024).toStringAsFixed(1)} MB • Just now',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Share this ID with the owner to print the file',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: resetUpload,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Upload Another File'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-              // ERROR SECTION
-              if (errorMessage != null)
-                Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        border: Border.all(color: Colors.red.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade600),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              errorMessage!,
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 12,
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white70),
+                                onPressed: resetUpload,
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-              const SizedBox(height: 32),
-
-              // SECURITY INFO
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.shield,
-                          size: 20,
-                          color: Colors.amber.shade700,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Security Information',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '✓ Files are encrypted locally on your device\n'
-                      '✓ Encryption key never transmitted\n'
-                      '✓ Server only stores encrypted data\n'
-                      '✓ Only owner can decrypt and print\n'
-                      '✓ File auto-deletes after printing',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
+                      
+                      // Status Messages
+                      if (uploadStatus != null || errorMessage != null) ...[
+                         const SizedBox(height: 20),
+                         Container(
+                           padding: const EdgeInsets.all(12),
+                           decoration: BoxDecoration(
+                             color: errorMessage != null 
+                                 ? Colors.red.withOpacity(0.8) 
+                                 : Colors.black.withOpacity(0.4),
+                             borderRadius: BorderRadius.circular(12),
+                           ),
+                           child: Text(
+                             errorMessage ?? uploadStatus!,
+                             style: const TextStyle(color: Colors.white),
+                             textAlign: TextAlign.center,
+                           ),
+                         ),
+                      ],
+                      
+                      const SizedBox(height: 100), // Bottom padding for fixed button
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // ========================================
-  // KEY VERIFICATION DIALOG (TOFU)
-  // ========================================
-
-  Future<bool?> _showKeyVerificationDialog(
-    KeyVerificationResult verification,
-    String ownerId,
-  ) async {
-    final isKeyChanged = verification.reason == KeyVerificationReason.keyChanged;
-    
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(isKeyChanged ? Icons.warning_amber : Icons.security,
-                color: isKeyChanged ? Colors.red : Colors.blue, size: 28),
-              const SizedBox(width: 12),
-              Expanded(child: Text(isKeyChanged ? 'Security Warning' : 'Verify Owner Identity',
-                style: TextStyle(color: isKeyChanged ? Colors.red : null, fontWeight: FontWeight.bold))),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(verification.message, style: const TextStyle(fontSize: 15)),
-                const SizedBox(height: 16),
-                Text('Owner ID:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(ownerId, style: const TextStyle(fontSize: 14, fontFamily: 'monospace')),
-                const SizedBox(height: 12),
-                Text('Key Fingerprint:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
-                  child: Text(verification.shortFingerprint, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+        // Floating Action Button styled as fixed bottom button
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: AppConstants.getBackgroundGradient(context), // Use same gradient for button
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
+              border: Border.all(color: Colors.white.withOpacity(0.25)),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: isEncrypting || isUploading || selectedFileName == null 
+                    ? null 
+                    : encryptAndUploadFile,
+                child: Center(
+                  child: isEncrypting || isUploading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.upload_file, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Upload',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: isKeyChanged ? Colors.orange : Colors.blue),
-              child: Text(isKeyChanged ? 'Trust Anyway' : 'Trust & Continue'),
-            ),
-          ],
-        );
-      },
+        ),
     );
   }
 }

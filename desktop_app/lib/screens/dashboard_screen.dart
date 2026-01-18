@@ -9,6 +9,8 @@ import 'print_preview_screen.dart';
 import 'print_history_screen.dart';
 import 'settings_screen.dart';
 import '../services/theme_service.dart';
+import '../services/file_history_service.dart'; // Import History Service
+import '../models/history_item.dart'; // Import History Item
 import '../widgets/file_card.dart';
 import '../widgets/glass_dialog.dart';
 import 'package:path/path.dart' as path;
@@ -217,68 +219,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handlePrintFlow(FileItem file) async {
-    // 1. Show Loading Dialog
+    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 24),
+            Text('Decrypting file...'),
+          ],
+        ),
+      ),
     );
-
-    Uint8List? decryptedBytes;
 
     try {
       final authService = context.read<AuthService>();
       final apiService = context.read<ApiService>();
-      final keyService = context.read<KeyService>();
       final encryptionService = context.read<EncryptionService>();
+      final keyService = context.read<KeyService>();
 
-      // 2. Fetch & Decrypt
-      final fileData = await apiService.getFileForPrinting(
-        file.fileId,
-        authService.accessToken!,
-      );
+      // 1. Fetch file data
+      final fileData = await apiService.getFileForPrinting(file.fileId, authService.accessToken!);
 
+      // 2. Get key pair
       final userEmail = authService.user?['email'];
-      if (userEmail == null) throw Exception('User not authenticated.');
-
+      if (userEmail == null) throw Exception('User not authenticated');
+      
       final keyPair = await keyService.getStoredKeyPair(userEmail);
-      if (keyPair == null) throw Exception('Private key not found.');
+      if (keyPair == null) throw Exception('No private key found. Cannot decrypt.');
 
-      if (fileData.encryptedSymmetricKey.isEmpty) throw Exception('No encrypted key found.');
-
+      // 3. Decrypt symmetric key
+      final encryptedSymmetricKey = _decodeBase64(fileData.encryptedSymmetricKey);
       final aesKey = await keyService.decryptSymmetricKey(
-        fileData.encryptedSymmetricKey,
+        base64Encode(encryptedSymmetricKey), // Re-encode after cleaning
         keyPair,
       );
 
-      final encryptedBytes = base64Decode(fileData.encryptedFileData);
-      final iv = base64Decode(fileData.ivVector);
-      final authTag = base64Decode(fileData.authTag);
+      // 4. Decrypt file
+      final encryptedFileBytes = _decodeBase64(fileData.encryptedFileData);
+      final ivBytes = _decodeBase64(fileData.ivVector);
+      final authTagBytes = _decodeBase64(fileData.authTag);
 
-      decryptedBytes = await encryptionService.decryptFileAES256(
-          encryptedBytes, iv, authTag, aesKey);
+      final decryptedBytes = await encryptionService.decryptFileAES256(
+        encryptedFileBytes,
+        ivBytes,
+        authTagBytes,
+        aesKey,
+      );
 
-      if (decryptedBytes == null) throw Exception('Integrity check failed.');
+      if (decryptedBytes == null) throw Exception('Decryption failed: integrity check mismatch');
 
-      // 3. Hide Loading
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Dismiss loading
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
 
-      // 4. Select Printer
-      await _showPrinterSelection(file, decryptedBytes);
+      // 5. Show printer selection
+      _showPrinterSelection(file, decryptedBytes);
 
     } catch (e) {
-      // Hide loading if error
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.of(context).pop(); 
-      }
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
       
+      // Show error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error preparing print: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Decryption Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  /// Helper to decode Base64 with URL-safe and padding handling
+  Uint8List _decodeBase64(String input) {
+    String cleaned = input.replaceAll('-', '+').replaceAll('_', '/');
+    cleaned = cleaned.replaceAll(RegExp(r'[^a-zA-Z0-9+/=]'), '');
+    final padLength = (4 - (cleaned.length % 4)) % 4;
+    cleaned += '=' * padLength;
+    return base64Decode(cleaned);
   }
 
   Future<void> _showPrinterSelection(FileItem file, Uint8List pdfBytes) async {
@@ -331,6 +349,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _executePrint(FileItem file, Printer printer, Uint8List pdfBytes) async {
     final authService = context.read<AuthService>();
     final apiService = context.read<ApiService>();
+    final historyService = context.read<FileHistoryService>();
 
     try {
       // Update Status: BEING_PRINTED
@@ -342,8 +361,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onLayout: (_) async => pdfBytes,
       );
 
-      // Update Status: COMPLETED & Delete
+      // Update Status: COMPLETED
       await apiService.updateFileStatus(file.fileId, 'PRINT_COMPLETED', authService.accessToken!);
+
+      // Save to Local History BEFORE deleting
+      await historyService.addToHistory(HistoryItem(
+        fileId: file.fileId,
+        fileName: file.fileName,
+        fileSizeBytes: file.fileSizeBytes,
+        uploadedAt: file.uploadedAt,
+        deletedAt: DateTime.now().toUtc().toIso8601String(),
+        status: 'PRINT_COMPLETED',
+        statusUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        isPrinted: true,
+      ));
+
+      // Delete (Hard Delete on Server)
       await apiService.deleteFile(file.fileId, authService.accessToken!);
 
       if (mounted) {
@@ -360,8 +393,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
   }
-
-
 
   Future<void> _deleteFile(FileItem file) async {
     final confirm = await showDialog<bool>(
@@ -381,6 +412,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final authService = context.read<AuthService>();
       final apiService = context.read<ApiService>();
+      final historyService = context.read<FileHistoryService>();
       
       // Try to update status to REJECTED (but continue even if it fails)
       try {
@@ -397,7 +429,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         print('Continuing with file deletion...');
       }
       
-      // Always delete the file
+      // Save to Local History BEFORE deleting
+      await historyService.addToHistory(HistoryItem(
+        fileId: file.fileId,
+        fileName: file.fileName,
+        fileSizeBytes: file.fileSizeBytes,
+        uploadedAt: file.uploadedAt,
+        deletedAt: DateTime.now().toUtc().toIso8601String(),
+        status: 'REJECTED',
+        statusUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        rejectionReason: 'Rejected by owner from dashboard',
+        isPrinted: false,
+      ));
+
+      // Always delete the file (Hard Delete)
       await apiService.deleteFile(file.fileId, authService.accessToken!);
       
       if (!mounted) return;
@@ -427,22 +472,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (var file in _files) {
       if (file.isPrinted) continue; // Skip printed files for active dashboard
 
-      DateTime? fileDate;
-      try {
-        fileDate = DateTime.parse(file.uploadedAt);
-      } catch (_) {
-        fileDate = null;
-      }
-
-      if (fileDate != null) {
-        final dateOnly = DateTime(fileDate.year, fileDate.month, fileDate.day);
-        if (dateOnly.isAtSameMomentAs(today)) {
-          todayFiles.add(file);
-        } else if (dateOnly.isAtSameMomentAs(yesterday)) {
-          yesterdayFiles.add(file);
-        } else {
-          olderFiles.add(file);
-        }
+      final fileDate = file.uploadedAtDateTime;
+      final dateOnly = DateTime(fileDate.year, fileDate.month, fileDate.day);
+      
+      if (dateOnly.isAtSameMomentAs(today)) {
+        todayFiles.add(file);
+      } else if (dateOnly.isAtSameMomentAs(yesterday)) {
+        yesterdayFiles.add(file);
       } else {
         olderFiles.add(file);
       }

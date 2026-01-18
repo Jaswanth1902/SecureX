@@ -282,47 +282,37 @@ def delete_file(file_id):
         deleted_at = datetime.datetime.utcnow().isoformat()
         
         if current_status == 'PRINT_COMPLETED':
-            # Mark as printed and deleted
-            cursor.execute("""
-                UPDATE files 
-                SET is_deleted = 1, deleted_at = ?, is_printed = 1, printed_at = ?
-                WHERE id = ?
-            """, (deleted_at, deleted_at, file_id))
+            # Hard delete for print completed too? Or keep history?
+            # User request implies "decrease in database", so hard delete is safest for "file count" requirements.
+            # However, usually we might want to keep print history.
+            # But specific request "desktop user rejects... file should be deleted" is clear for rejection.
+            # Let's apply Hard Delete for ALL deletions to be consistent with "decreasing size".
+            
+            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
             final_status = current_status
-            print(f"File deleted, preserving status: {current_status}")
+            print(f"File PERMANENTLY deleted (Hard Delete), status was: {current_status}")
 
         elif current_status in ['APPROVED', 'REJECTED']:
-            # Delete but DO NOT mark as printed (unless it was already printed? but APPROVED/REJECTED implies not yet printed in new flow)
-            # Actually if it was REJECTED, it definitely wasn't printed.
-            # If it was APPROVED, in new flow it transitions to BEING_PRINTED then PRINT_COMPLETED. 
-            # So APPROVED means it wasn't printed yet.
-            cursor.execute("""
-                UPDATE files 
-                SET is_deleted = 1, deleted_at = ?
-                WHERE id = ?
-            """, (deleted_at, file_id))
+            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
             final_status = current_status
-            print(f"File deleted, preserving status: {current_status}")
+            print(f"File PERMANENTLY deleted (Hard Delete), status was: {current_status}")
         else:
-            # Set to CANCELLED for other statuses
-            cursor.execute("""
-                UPDATE files 
-                SET is_deleted = 1, deleted_at = ?, is_printed = 1, printed_at = ?, status = 'CANCELLED', status_updated_at = ?
-                WHERE id = ?
-            """, (deleted_at, deleted_at, deleted_at, file_id))
+            # For CANCELLED (e.g. deleting a WAITING file)
             final_status = 'CANCELLED'
-            print(f"File deleted, status changed from {current_status} to CANCELLED")
+            cursor.execute("DELETE FROM files WHERE id = ?", (file_id,))
+            print(f"File PERMANENTLY deleted (Hard Delete), status changed from {current_status} to CANCELLED")
         
         conn.commit()
 
         # Notify via SSE (notify the owner, not the user)
+        # Note: We notify BEFORE returning, but since it's deleted, future fetches won't find it.
         try:
             sse_manager.publish(file_owner_id, "status_update", {
                 "file_id": file_id,
                 "file_name": file_name,
                 "status": final_status,
                 "updated_at": deleted_at,
-                "message": f"File deleted with status: {final_status}"
+                "message": f"File permanently deleted with status: {final_status}"
             })
         except Exception as sse_error:
             print(f"Warning: Failed to send SSE notification: {sse_error}")

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:http/http.dart' as http;
 import '../models/file_item.dart';
+import '../models/history_item.dart';
 
 class ApiService {
   // Default fallback, but will try to load from config
@@ -119,7 +120,22 @@ class ApiService {
       if (response.statusCode == 200) {
         return true;
       } else {
-        throw Exception('Failed to update status: ${response.statusCode}');
+        String errorMsg = 'Failed to update status: ${response.statusCode}';
+        try {
+          final errorBody = jsonDecode(response.body);
+          if (errorBody['error'] != null) {
+            errorMsg += ' - ${errorBody['error']}';
+            if (errorBody['message'] != null) {
+              errorMsg += ' (${errorBody['message']})';
+            }
+          }
+        } catch (_) {
+          // Fallback if not JSON
+          if (response.body.isNotEmpty) {
+             errorMsg += ' - ${response.body}';
+          }
+        }
+        throw Exception(errorMsg);
       }
     } catch (e) {
       throw Exception('Update status error: $e');
@@ -167,43 +183,7 @@ class ApiService {
   }
 }
 
-class HistoryItem {
-  final String fileId;
-  final String fileName;
-  final int fileSizeBytes;
-  final String uploadedAt;
-  final String? deletedAt;
-  final String status;
-  final String statusUpdatedAt;
-  final String? rejectionReason;
-  final bool isPrinted;
 
-  HistoryItem({
-    required this.fileId,
-    required this.fileName,
-    required this.fileSizeBytes,
-    required this.uploadedAt,
-    this.deletedAt,
-    required this.status,
-    required this.statusUpdatedAt,
-    this.rejectionReason,
-    required this.isPrinted,
-  });
-
-  factory HistoryItem.fromJson(Map<String, dynamic> json) {
-    return HistoryItem(
-      fileId: json['file_id'],
-      fileName: json['file_name'],
-      fileSizeBytes: json['file_size_bytes'] ?? 0,
-      uploadedAt: json['uploaded_at'] ?? '',
-      deletedAt: json['deleted_at'],
-      status: json['status'] ?? 'UNKNOWN',
-      statusUpdatedAt: json['status_updated_at'] ?? '',
-      rejectionReason: json['rejection_reason'],
-      isPrinted: (json['is_printed'] == 1) || (json['is_printed'] == true),
-    );
-  }
-}
 
 
 class PrintFileResponse {

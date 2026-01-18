@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 class ApiService {
-  final String baseUrl = 'http://192.168.211.34:5000'; // Updated to current WiFi IP
+  final String baseUrl = 'http://10.229.110.71:5000'; // Updated to current WiFi IP
 
   // ========================================
   // USER REGISTRATION
@@ -79,42 +79,6 @@ class ApiService {
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException('Login error: $e', -1);
-    }
-  }
-
-  // ========================================
-  // RESET PASSWORD
-  // ========================================
-
-  Future<void> resetPassword({
-    required String phone,
-    required String oldPassword,
-    required String newPassword,
-  }) async {
-    try {
-      final url = Uri.parse('$baseUrl/api/auth/reset-password');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'phone': phone,
-          'old_password': oldPassword,
-          'new_password': newPassword,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return;
-      } else {
-        final json = jsonDecode(response.body);
-        throw ApiException(
-          json['message'] ?? 'Password reset failed: ${response.statusCode}',
-          response.statusCode,
-        );
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Reset password error: $e', -1);
     }
   }
 

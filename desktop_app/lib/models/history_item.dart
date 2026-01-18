@@ -31,7 +31,19 @@ class HistoryItem {
       status: json['status'] ?? 'UNKNOWN',
       statusUpdatedAt: json['status_updated_at'] ?? '',
       rejectionReason: json['rejection_reason'],
-      isPrinted: json['is_printed'] ?? false,
+      isPrinted: (json['is_printed'] == 1) || (json['is_printed'] == true),
     );
+  }
+
+  DateTime get uploadedAtDateTime {
+    try {
+      var dateStr = uploadedAt;
+      if (!dateStr.endsWith('Z')) {
+        dateStr += 'Z';
+      }
+      return DateTime.parse(dateStr).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }

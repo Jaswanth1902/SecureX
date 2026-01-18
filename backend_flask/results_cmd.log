@@ -1,0 +1,10 @@
+Checking: C:\Users\jaswa\Downloads\SafeCopy\backend_flask\database.sqlite
+Size: 81.61 MB
+Total: 21
+Active: 3
+SoftDel: 18
+--- Status (Active) ---
+WAITING_FOR_APPROVAL: 3
+--- Status (SoftDel) ---
+APPROVED: 1
+REJECTED: 17

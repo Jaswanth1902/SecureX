@@ -31,4 +31,16 @@ class FileItem {
       senderPhone: json['sender_phone'],
     );
   }
+
+  DateTime get uploadedAtDateTime {
+    try {
+      var dateStr = uploadedAt;
+      if (!dateStr.endsWith('Z')) {
+        dateStr += 'Z';
+      }
+      return DateTime.parse(dateStr).toLocal();
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
 }
