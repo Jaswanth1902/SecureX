@@ -58,8 +58,14 @@ class _FileListScreenState extends State<FileListScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        var fileList = List<Map<String, dynamic>>.from(data['files']);
+        
+        // Filter out any dismissed files so they don't reappear
+        final dismissedIds = await fileHistoryService.getDismissedFileIds();
+        fileList = fileList.where((f) => !dismissedIds.contains(f['file_id']?.toString())).toList();
+        
         setState(() {
-          files = List<Map<String, dynamic>>.from(data['files']);
+          files = fileList;
           filteredFiles = files;
           isLoading = false;
         });
@@ -199,21 +205,37 @@ class _FileListScreenState extends State<FileListScreen> {
 
   void _dismissRejectedFile(String fileId) async {
     try {
-      // Rejected files are already deleted from server
-      // Mark as dismissed so it doesn't reappear, and remove from local history
-      await fileHistoryService.markAsDismissed(fileId);
-      await fileHistoryService.removeFromHistory(fileId);
-      
+      final fileIdStr = fileId?.toString() ?? '';
+      if (fileIdStr.isEmpty) throw Exception('Invalid file id');
+
+      // Attempt to delete on server first (permanent deletion).
+      try {
+        final accessToken = await userService.getAccessToken();
+        if (accessToken != null && accessToken.isNotEmpty) {
+          await apiService.deleteFile(fileId: fileIdStr, accessToken: accessToken);
+        }
+      } catch (e) {
+        // If server delete fails, continue with local dismissal so user doesn't keep seeing it.
+        // The local dismissed list will prevent immediate reappearance.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Server delete failed: $e')));
+        }
+      }
+
+      // Mark dismissed locally and remove from local history/UI immediately
+      await fileHistoryService.markAsDismissed(fileIdStr);
+      await fileHistoryService.removeFromHistory(fileIdStr);
+
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('File dismissed from history')));
-      _fetchRecentFiles();
+      setState(() {
+        files.removeWhere((f) => (f['file_id']?.toString() ?? '') == fileIdStr);
+        filteredFiles.removeWhere((f) => (f['file_id']?.toString() ?? '') == fileIdStr);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File dismissed')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
