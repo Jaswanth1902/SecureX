@@ -1,13 +1,11 @@
 // ========================================
 // LOGIN SCREEN - USER AUTHENTICATION
-// Allows users to login with email and password
+// Allows users to login with phone and password
 // ========================================
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/user_service.dart';
-import '../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function(String accessToken, String userId) onLoginSuccess;
@@ -77,123 +75,138 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    // Force a neutral, consistent login appearance regardless of global theme
+    const Color primaryText = Color(0xFF0F172A);
+    const Color mutedText = Color(0xFF6B7280);
+    const Color inputBg = Colors.white;
+    const Color buttonColor = Color(0xFF2563EB);
 
-    final content = Scaffold(
-      appBar: AppBar(title: const Text('Login'), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Logo/Title
-            const SizedBox(height: 40),
-            const Text(
-              'Secure Print',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+    return Scaffold(
+      // Use a solid white background for the login page
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Login', style: TextStyle(color: primaryText, fontWeight: FontWeight.w700)),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: primaryText,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                // App title
+                const Text(
+                  'SecureX',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: primaryText),
+                ),
+                const SizedBox(height: 12),
+                const SizedBox(height: 32),
+
+                // Input card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: inputBg,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Phone Field
+                      TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(color: primaryText, fontWeight: FontWeight.w600),
+                        cursorColor: primaryText,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          labelStyle: const TextStyle(color: mutedText),
+                          filled: true,
+                          fillColor: inputBg,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: buttonColor)),
+                          prefixIcon: Icon(Icons.phone, color: mutedText),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Password Field
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        obscuringCharacter: '•',
+                        style: const TextStyle(color: primaryText, fontWeight: FontWeight.w600),
+                        cursorColor: primaryText,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          labelStyle: const TextStyle(color: mutedText),
+                          filled: true,
+                          fillColor: inputBg,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: buttonColor)),
+                          prefixIcon: Icon(Icons.lock, color: mutedText),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Error Message
+                      if (_errorMessage != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                          ),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Color(0xFF991B1B)),
+                          ),
+                        ),
+                      if (_errorMessage != null) const SizedBox(height: 12),
+
+                      // Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: buttonColor,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: buttonColor.withOpacity(0.6),
+                            disabledForegroundColor: Colors.white.withOpacity(0.8),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-            const SizedBox(height: 40),
-
-            // Phone Field
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: 'Phone Number',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                prefixIcon: const Icon(Icons.phone),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Password Field
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                prefixIcon: const Icon(Icons.lock),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Error Message
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red.shade800),
-                ),
-              ),
-            const SizedBox(height: 20),
-
-            // Login Button
-            ElevatedButton(
-              onPressed: _isLoading ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Login', style: TextStyle(fontSize: 16)),
-            ),
-            const SizedBox(height: 16),
-
-            // Register Link
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to register screen (handled by parent)
-                },
-                child: Text(
-                  'Don\'t have an account? Register here',
-                  style: TextStyle(color: Colors.blue.shade600),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
-
-    if (themeProvider.isGradientMode) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
-              Color(0xFFf093fb),
-              Color(0xFF4facfe),
-            ],
-            stops: [0.0, 0.3, 0.6, 1.0],
-          ),
-        ),
-        child: content,
-      );
-    }
-
-    return content;
   }
 }
